@@ -56,7 +56,10 @@ internal fun PlaygroundScreen(state: PlaygroundState, onSave: (String) -> String
     var fullscreen by rememberSaveable { mutableStateOf(false) }
     val faceGestures = Modifier.pointerInput(Unit) {
         detectTapGestures(
-            onTap = { if (fullscreen) state.load(nextExpression(state.selected)) else fullscreen = true },
+            onTap = {
+                state.poke()
+                if (fullscreen) state.load(nextExpression(state.selected)) else fullscreen = true
+            },
             onLongPress = { fullscreen = false },
         )
     }
@@ -69,12 +72,12 @@ internal fun PlaygroundScreen(state: PlaygroundState, onSave: (String) -> String
         }
     }
     if (fullscreen) {
-        AnimatedFace(state.engine, Modifier.fillMaxSize().then(faceGestures), state.style, state.stats)
+        AnimatedFace(state.engine, Modifier.fillMaxSize().then(faceGestures), state.style, state.stats, if (state.fastTime) FAST_TIME else 1)
         return
     }
     Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
         Box(Modifier.fillMaxWidth().weight(0.42f)) {
-            AnimatedFace(state.engine, Modifier.fillMaxSize().then(faceGestures), state.style, state.stats)
+            AnimatedFace(state.engine, Modifier.fillMaxSize().then(faceGestures), state.style, state.stats, if (state.fastTime) FAST_TIME else 1)
             Text(
                 state.selected ?: "custom",
                 Modifier.align(Alignment.TopStart).padding(12.dp),
@@ -82,6 +85,12 @@ internal fun PlaygroundScreen(state: PlaygroundState, onSave: (String) -> String
                 style = MaterialTheme.typography.labelMedium,
             )
             FrameOverlay(state.stats, Modifier.align(Alignment.TopEnd).padding(12.dp))
+            Text(
+                state.vigilance.name + if (state.fastTime) " · ×$FAST_TIME" else "",
+                Modifier.align(Alignment.BottomStart).padding(12.dp),
+                color = Color.White.copy(alpha = 0.5f),
+                style = MaterialTheme.typography.labelMedium,
+            )
         }
         Controls(state, onSave, Modifier.weight(0.58f))
     }
@@ -153,10 +162,18 @@ private fun Controls(state: PlaygroundState, onSave: (String) -> String, modifie
             if (status.isNotEmpty()) Text(status, style = MaterialTheme.typography.bodySmall)
         }
         item {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                Toggle("Life", state.lifeOn) { state.toggleLife(it) }
+                Toggle("×$FAST_TIME", state.fastTime) { state.fastTime = it }
+                OutlinedButton({ state.dozeOff() }) { Text("Doze") }
+            }
+        }
+        item {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Toggle("Spam random targets", state.spamming) { state.spamming = it }
             }
         }
+        item { BehaviorLog(state.log) }
         item { DynamicsPanel(state) }
         for (group in Channel.entries.groupBy { it.group }) {
             item(key = group.key.name) {
@@ -209,6 +226,18 @@ private fun FrameOverlay(stats: FrameStats, modifier: Modifier) {
     Text(text, modifier, color = Color.White.copy(alpha = 0.6f), fontFamily = FontFamily.Monospace, style = MaterialTheme.typography.labelSmall)
 }
 
+@Composable
+private fun BehaviorLog(log: List<String>) {
+    Column {
+        Text("Behaviour log", style = MaterialTheme.typography.titleSmall)
+        for (line in log.take(LOG_LINES)) {
+            Text(line, fontFamily = FontFamily.Monospace, style = MaterialTheme.typography.bodySmall)
+        }
+    }
+}
+
+private const val FAST_TIME = 10
+private const val LOG_LINES = 12
 private const val SPAM_MIN_SECONDS = 0.12f
 private const val SPAM_MAX_SECONDS = 0.45f
 private const val OVERLAY_PERIOD_MILLIS = 500L

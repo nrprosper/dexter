@@ -8,6 +8,9 @@ import androidx.compose.runtime.setValue
 import face.core.FaceEngine
 import face.core.anim.DynamicsConfig
 import face.core.anim.DynamicsProfile
+import face.core.behavior.FaceEvent
+import face.core.behavior.FaceEventListener
+import face.core.behavior.Vigilance
 import face.core.expression.Expression
 import face.core.expression.ExpressionId
 import face.core.expression.ExpressionLibrary
@@ -22,7 +25,8 @@ import face.render.FrameStats
 // Sliders and presets edit the engine's target; the springs animate the visible face towards it.
 internal class PlaygroundState(private val library: ExpressionLibrary, saved: List<Expression>) {
     private val edited = FacePose()
-    val engine = FaceEngine(library)
+    val engine = FaceEngine(library, Rng(System.nanoTime()))
+    val log = mutableStateListOf<String>()
     val stats = FrameStats()
     val values = mutableStateListOf<Float>()
     val savedPoses = mutableStateListOf<Expression>().apply { addAll(saved) }
@@ -32,10 +36,33 @@ internal class PlaygroundState(private val library: ExpressionLibrary, saved: Li
     var spamming by mutableStateOf(false)
     var tunedGroup by mutableStateOf(ChannelGroup.Head)
     val dynamicsRevision = mutableIntStateOf(0)
+    var vigilance by mutableStateOf(Vigilance.Awake)
+    var fastTime by mutableStateOf(false)
+    var lifeOn by mutableStateOf(true)
+        private set
 
     init {
         repeat(Channel.count) { values.add(0f) }
+        engine.listener = FaceEventListener { event, detail, time ->
+            if (event == FaceEvent.Saccade) return@FaceEventListener
+            vigilance = engine.vigilance
+            log.add(0, "%7.1fs  %s %s".format(time, event.name, detail))
+            if (log.size > LOG_SIZE) log.removeAt(log.lastIndex)
+        }
         load(ExpressionId.Neutral)
+    }
+
+    fun toggleLife(on: Boolean) {
+        lifeOn = on
+        engine.lifeEnabled = on
+    }
+
+    fun dozeOff() {
+        engine.dozeOff()
+    }
+
+    fun poke() {
+        engine.interact()
     }
 
     fun load(id: ExpressionId) {
@@ -104,11 +131,13 @@ internal class PlaygroundState(private val library: ExpressionLibrary, saved: Li
     }
 
     private fun publish() {
+        engine.interact()
         engine.setTarget(edited)
         for (c in Channel.entries) values[c.ordinal] = edited[c]
     }
 
     private companion object {
         val HEAD_PLACEMENT = listOf(Channel.HeadX, Channel.HeadY, Channel.HeadTilt, Channel.HeadScale)
+        const val LOG_SIZE = 60
     }
 }
