@@ -9,7 +9,7 @@ The current focus is the **Face Engine**, a self-contained set of modules that t
 | Phase | What | State |
 | --- | --- | --- |
 | 0 | Project skeleton: modules, version catalog, blank `FaceView` | Done |
-| 1 | Static rig, bold renderer, three silhouettes, 14 expressions, playground | Done (silhouette and accent still to be chosen) |
+| 1 | Static rig, bold renderer, three silhouettes, 14 expressions, playground | Done: Orb silhouette, mint accent |
 | 2 | Time, frame loop and springs | Next |
 | 3–8 | Life, API, emotion, speech, integration, polish | Planned |
 
