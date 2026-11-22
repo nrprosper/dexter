@@ -104,7 +104,7 @@ face.snapshot                                         // StateFlow<FaceSnapshot>
 The LLM chooses the feeling, the face chooses the performance.
 
 - **Director:** every `EmotionSignal` adds evidence for its emotion (scaled by confidence), and evidence fades over a few seconds. The face only switches when another emotion clearly out-evidences the current one (30% plus the hysteresis margin) and the minimum dwell has passed. A stray label from a noisy LLM loses; a repeated or confident one wins. Changes blend with inertia, big swings (sad → happy) get a transition beat (a surprise or a neutral pause), and expressions decay back to the **mood** with a half-life.
-- **Mood:** a slow temperament from the personality (Dexter rests slightly happy and curious), nudged by what happens and drifting back.
+- **Mood:** a slow temperament from the personality (Dexter rests neutral), nudged by what happens and drifting back.
 - **Arousal:** energy from the emotion and speech style; it speeds up springs and idle behaviour ("excited" is just happy with high arousal).
 - **Reactions:** Surprise, Startle, Delight, Acknowledge, Oops, Laugh and Realization play as attack/hold/release envelopes. A higher priority interrupts a lower one, each has a cooldown (five surprises in a row give one pop), and several hand over to a follow-up emotion.
 - **Quirks:** a double blink when unsure, a happy head wobble, and a one-eye peek when woken.

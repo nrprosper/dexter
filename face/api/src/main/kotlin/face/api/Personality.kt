@@ -21,7 +21,7 @@ public data class Personality(
 }
 
 public data class MoodSettings(
-    val baseline: Map<Emotion, Float> = mapOf(Emotion.Happy to 0.25f, Emotion.Curious to 0.2f),
+    val baseline: Map<Emotion, Float> = emptyMap(),
     val arousal: Float = 0.5f,
     val driftHalfLife: Float = 600f,
 )

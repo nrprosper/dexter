@@ -80,7 +80,7 @@ class DirectorTest {
         assertEquals(Emotion.Sad, face.snapshot.value.mood)
         face.setEmotion(EmotionSignal(Emotion.Neutral, 0f))
         face.run(1_500f)
-        assertEquals(Emotion.Happy, face.snapshot.value.mood)
+        assertEquals(Emotion.Neutral, face.snapshot.value.mood)
     }
 
     @Test

@@ -3,7 +3,7 @@
   "id": "dexter",
   "name": "Dexter",
   "mood": {
-    "baseline": { "happy": 0.25, "curious": 0.2 },
+    "baseline": {},
     "arousal": 0.5,
     "driftHalfLife": 600
   },
