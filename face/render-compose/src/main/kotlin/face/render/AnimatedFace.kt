@@ -4,6 +4,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.Lifecycle
@@ -13,19 +14,23 @@ import face.core.FaceEngine
 import face.core.time.FrameTicker
 
 // One withFrameNanos loop, alive only while STARTED; the frame counter is read only in the draw phase.
+// timeScale > 1 runs several engine steps per frame (debug time acceleration).
 @Composable
 public fun AnimatedFace(
     engine: FaceEngine,
     modifier: Modifier = Modifier,
     style: FaceStyle = FaceStyle.Default,
     stats: FrameStats? = null,
+    timeScale: Int = 1,
 ) {
     val frame = remember { mutableIntStateOf(0) }
+    val scale = rememberUpdatedState(timeScale)
     val lifecycle = LocalLifecycleOwner.current.lifecycle
     LaunchedEffect(engine, lifecycle) {
         val ticker = FrameTicker()
         val onFrame: (Long) -> Unit = { nanos ->
-            engine.step(ticker.tick(nanos))
+            val dt = ticker.tick(nanos)
+            repeat(scale.value) { engine.step(dt) }
             stats?.record(nanos)
             frame.intValue++
         }

@@ -1,20 +1,23 @@
 package face.render
 
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.State
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.tooling.preview.Preview
 import face.core.FaceEngine
 import face.core.expression.ExpressionLibrary
 import face.core.rig.FacePose
+import face.core.time.Rng
 
 @Composable
 public fun FaceView(modifier: Modifier = Modifier, style: FaceStyle = FaceStyle.Default) {
-    val engine = remember { FaceEngine(ExpressionLibrary.loadBundled()) }
-    AnimatedFace(engine, modifier, style)
+    val engine = remember { FaceEngine(ExpressionLibrary.loadBundled(), Rng(System.nanoTime())) }
+    AnimatedFace(engine, modifier.pointerInput(engine) { detectTapGestures { engine.interact() } }, style)
 }
 
 // Reads revision only in the draw phase, so pose edits redraw without recomposing.
