@@ -35,9 +35,9 @@ class MainActivity : ComponentActivity() {
         super.onStop()
     }
 
-    override fun dispatchKeyEvent(event: KeyEvent): Boolean {
+    override fun onKeyDown(keyCode: Int, event: KeyEvent): Boolean {
         senses.onKeyEvent(event)
-        return super.dispatchKeyEvent(event)
+        return super.onKeyDown(keyCode, event)
     }
 
     private fun enterImmersiveMode() {

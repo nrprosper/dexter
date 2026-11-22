@@ -80,7 +80,7 @@ public class PhoneSenses(context: Context, private val face: FaceController) {
         main.removeCallbacks(reportVolume)
     }
 
-    // Call from Activity.dispatchKeyEvent; it only observes, the key still changes the volume.
+    // Call from Activity.onKeyDown; it only observes, the key still changes the volume.
     public fun onKeyEvent(event: KeyEvent) {
         if (!started || event.action != KeyEvent.ACTION_DOWN) return
         if (event.keyCode == KeyEvent.KEYCODE_VOLUME_UP || event.keyCode == KeyEvent.KEYCODE_VOLUME_DOWN) {
