@@ -21,8 +21,9 @@ public fun FaceView(
     modifier: Modifier = Modifier,
     style: FaceStyle = FaceStyle.Default,
     engine: FaceEngine = rememberFaceEngine(),
+    intro: FaceIntro? = null,
 ) {
-    AnimatedFace(engine, modifier, style)
+    AnimatedFace(engine, modifier, style, intro = intro)
 }
 
 // Reads revision only in the draw phase, so pose edits redraw without recomposing.

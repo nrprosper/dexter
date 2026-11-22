@@ -48,6 +48,7 @@ import face.core.rig.Channel
 import face.core.senses.DeviceResponder
 import face.core.senses.FaceTouch
 import face.core.senses.SensesLayer
+import face.core.senses.TiltParallax
 import face.core.senses.TouchResponder
 import face.core.senses.VolumeWatch
 import face.core.rig.ChannelGroup
@@ -103,6 +104,7 @@ public class FaceEngine(
     private val device = DeviceResponder(rng, boredom)
     private val volume = VolumeWatch()
     private val touch = TouchResponder(ctx, blink, reactions, director)
+    private val tilt = TiltParallax()
     private val emotionLayer = EmotionLayer(library, neutral, emotionState, manual)
     private val gazeLayer = GazeLayer(gaze, ctx)
     private val lifeLayer = LifeLayer(idle, boredom, breath, sleepPose, ctx)
@@ -110,7 +112,7 @@ public class FaceEngine(
     private val stack = LayerStack(
         arrayOf(
             emotionLayer, activityLayer, gazeLayer, lifeLayer,
-            SpeechLayer(speech), SensesLayer(device, volume, touch), ReactionLayer(reactions, quirks, neutral),
+            SpeechLayer(speech), SensesLayer(device, volume, touch, tilt), ReactionLayer(reactions, quirks, neutral),
         ),
     )
 
@@ -183,6 +185,8 @@ public class FaceEngine(
 
     override fun showVolume(level: Float): Unit = inbox.showVolume(level)
 
+    override fun setTilt(x: Float, y: Float): Unit = inbox.setTilt(x, y)
+
     // The UI reports the canvas size so screen-aware behaviours (the volume visit) pick the right side.
     public fun setViewport(width: Float, height: Float) {
         volume.portrait = height > width
@@ -244,9 +248,12 @@ public class FaceEngine(
         } else {
             director.update(clamped)
         }
-        val speed = speedFor(emotionState.arousal)
+        val saver = device.state.batterySaver
+        val speed = speedFor(emotionState.arousal) * (if (saver) SAVER_SPEED else 1f)
         if (abs(speed - appliedSpeed) > SPEED_EPSILON) applyDynamics(speed)
-        idle.rateScale = IDLE_RATE_BASE + IDLE_RATE_GAIN * emotionState.arousal
+        idle.rateScale = (IDLE_RATE_BASE + IDLE_RATE_GAIN * emotionState.arousal) * (if (saver) SAVER_IDLE else 1f)
+        tilt.x = inbox.tiltX()
+        tilt.y = inbox.tiltY()
         reactions.update(clamped)
         quirks.update(clamped)
         device.update(clamped)
@@ -409,6 +416,8 @@ public class FaceEngine(
         const val IDLE_RATE_BASE = 0.7f
         const val IDLE_RATE_GAIN = 0.6f
         const val AROUSAL_STEPS = 10f
+        const val SAVER_SPEED = 0.85f
+        const val SAVER_IDLE = 0.5f
         const val PLAYFUL_BASE = 0.7f
         const val PLAYFUL_GAIN = 0.6f
         val SURPRISE_BEAT: FaceReaction = FaceReaction.Surprise()

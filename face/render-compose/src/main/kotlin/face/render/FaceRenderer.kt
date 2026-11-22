@@ -45,11 +45,26 @@ public class FaceRenderer {
     private var lastWidth = 0f
     private var lastHeight = 0f
 
+    // Launch intro: the whole face drawn smaller (and shifted) around the canvas centre, easing to 1 and 0.
+    internal var zoom = 1f
+    internal var zoomOffsetY = 0f
+
     // time (seconds) only drives looping decorations such as the dizzy lines.
     public fun draw(scope: DrawScope, pose: FacePose, style: FaceStyle, time: Float = 0f): Unit = with(scope) {
         lastWidth = size.width
         lastHeight = size.height
         drawRect(style.background)
+        if (zoom == 1f && zoomOffsetY == 0f) {
+            drawFace(pose, style, time)
+        } else {
+            withTransform({
+                translate(0f, zoomOffsetY)
+                scale(zoom, zoom, Offset(size.width / 2f, size.height / 2f))
+            }) { drawFace(pose, style, time) }
+        }
+    }
+
+    private fun DrawScope.drawFace(pose: FacePose, style: FaceStyle, time: Float) {
         val u = min(size.width, size.height)
         val cx = size.width / 2f + pose[Channel.HeadX] * HEAD_TRAVEL * size.width
         val cy = size.height / 2f - pose[Channel.HeadY] * HEAD_TRAVEL * size.height

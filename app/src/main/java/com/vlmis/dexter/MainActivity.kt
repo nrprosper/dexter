@@ -20,9 +20,14 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        val intro = if (savedInstanceState == null) SplashIntro.forWindow(this) else null
+        splashScreen.setOnExitAnimationListener {
+            it.remove()
+            intro?.start()
+        }
         enableEdgeToEdge()
         enterImmersiveMode()
-        setContent { FaceView(engine = engine) }
+        setContent { FaceView(engine = engine, intro = intro) }
     }
 
     override fun onStart() {

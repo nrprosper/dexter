@@ -16,4 +16,9 @@ public sealed interface FaceReaction {
     public data object BatteryFull : FaceReaction
     public data object HeadphonesIn : FaceReaction
     public data object Shaken : FaceReaction
+    public data object TooBright : FaceReaction
+    public data object Screenshot : FaceReaction
+    public data class WelcomeBack(val longAbsence: Boolean = false) : FaceReaction
+    public data object GoodMorning : FaceReaction
+    public data object LateNight : FaceReaction
 }
