@@ -89,7 +89,7 @@ Run `:face:core:test` before saying a task is done.
 
 - [x] minSdk: 31
 - [x] Face silhouette: **Orb** (round superellipse eyes with pupils, brows on, filled mouth)
-- [x] Accent colour and background: **mint `#5CF2C2`** on near-black `#050507` with the glow backdrop
+- [x] Accent colour and background: **blue `#4CC9F0`** on near-black `#050507` with the glow backdrop (was mint until Phase 4)
 - [ ] Two or three signature quirks
 - [ ] JSON format for expressions and personality (expressions decided in Phase 1: `{format: 1, id, deltas: {channelKey: delta}}`, deltas relative to neutral; personality still open, Phase 5)
 - [ ] TTS source (on-device or cloud), which affects the speech phase

@@ -9,14 +9,14 @@ The current focus is the **Face Engine**, a self-contained set of modules that t
 | Phase | What | State |
 | --- | --- | --- |
 | 0 | Project skeleton: modules, version catalog, blank `FaceView` | Done |
-| 1 | Static rig, bold renderer, three silhouettes, 14 expressions, playground | Done: Orb silhouette, mint accent |
+| 1 | Static rig, bold renderer, three silhouettes, 14 expressions, playground | Done: Orb silhouette, blue accent |
 | 2 | Frame loop, springs, frame-rate independent motion | Done |
 | 3 | Life: blink, gaze, breathing, idle, boredom and sleep | Done (10-minute desk test is yours) |
 | 4 | Public API (`FaceController`), activities, inbox | Done |
 | 5 | Emotion blending, mood, reactions, personality | Next |
 | 6–8 | Speech, integration, polish | Planned |
 
-The app opens to the Orb face (mint) on a black, immersive screen. Left alone it blinks, glances around, breathes and does small idle things; after a while without interaction it gets drowsy and falls asleep. Tap it to wake it.
+The app opens to the Orb face (blue) on a black, immersive screen. Left alone it blinks, glances around, breathes and does small idle things; after a while without interaction it gets drowsy and falls asleep. Tap it to wake it.
 
 ## Requirements
 
