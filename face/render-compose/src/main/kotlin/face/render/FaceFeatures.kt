@@ -9,10 +9,15 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.clipPath
 import face.core.rig.Channel
 import face.core.rig.FacePose
+import kotlin.math.max
+import kotlin.math.min
 
 internal class FaceFeatures(private val renderer: FaceRenderer) {
     private val path = Path()
     private val innerPath = Path()
+    private var faceTop = 0f
+    private var faceLeft = 0f
+    private var faceRight = 0f
 
     fun drawMouth(scope: DrawScope, pose: FacePose, style: FaceStyle, u: Float, cx: Float, cy: Float, accent: Color) {
         val round = pose[Channel.MouthRoundness]
@@ -93,9 +98,34 @@ internal class FaceFeatures(private val renderer: FaceRenderer) {
         drawBlush(scope, pose, style, u, cx, cy)
         drawSweat(scope, pose, style, u, cx, cy)
         drawSparkle(scope, pose, style, u, cx, cy)
-        drawQuestion(scope, pose, style, u, cx, cy, accent, line)
-        drawSleepZ(scope, pose, style, u, cx, cy, accent, line)
-        drawThinkDots(scope, pose, style, u, cx, cy, accent)
+        if (pose[Channel.Question] <= 0f && pose[Channel.SleepZ] <= 0f && pose[Channel.ThinkDots] <= 0f) return
+        measureFace(pose, style, u, cx, cy)
+        drawQuestion(scope, pose, u, accent, line)
+        drawSleepZ(scope, pose, u, accent, line)
+        drawThinkDots(scope, pose, u, accent)
+    }
+
+    // Fills faceTop/faceLeft/faceRight with the eyes' and brows' extent so glyph accents can sit outside it.
+    private fun measureFace(pose: FacePose, style: FaceStyle, u: Float, cx: Float, cy: Float) {
+        faceTop = Float.MAX_VALUE
+        faceLeft = Float.MAX_VALUE
+        faceRight = -Float.MAX_VALUE
+        for (side in SIDES) {
+            val open = pose[if (side < 0) Channel.EyeOpenL else Channel.EyeOpenR]
+            val ex = renderer.eyeCenterX(pose, style, u, cx, side)
+            val a = renderer.eyeHalfWidth(pose, style, u, side)
+            faceTop = min(faceTop, renderer.eyeCenterY(pose, style, u, cy, side) - renderer.eyeBaseHalfHeight(pose, style, u, side) * max(1f, open))
+            faceLeft = min(faceLeft, ex - a)
+            faceRight = max(faceRight, ex + a)
+        }
+        if (!style.showBrows) return
+        val half = style.browThickness * u * 0.5f
+        for (brow in SIDES) {
+            val b = if (brow < 0) renderer.browLeft else renderer.browRight
+            faceTop = min(faceTop, min(b[1], min(b[2], b[4])) - half)
+            faceLeft = min(faceLeft, min(b[0], b[3]) - half)
+            faceRight = max(faceRight, max(b[0], b[3]) + half)
+        }
     }
 
     private fun drawBlush(scope: DrawScope, pose: FacePose, style: FaceStyle, u: Float, cx: Float, cy: Float) {
@@ -140,49 +170,52 @@ internal class FaceFeatures(private val renderer: FaceRenderer) {
         scope.drawPath(path, Color.White, alpha = sparkle)
     }
 
-    private fun drawQuestion(scope: DrawScope, pose: FacePose, style: FaceStyle, u: Float, cx: Float, cy: Float, accent: Color, line: Stroke) {
+    private fun drawQuestion(scope: DrawScope, pose: FacePose, u: Float, accent: Color, line: Stroke) {
         val question = pose[Channel.Question]
         if (question <= 0f) return
         val q = QUESTION_SIZE * u
-        val x = renderer.eyeCenterX(pose, style, u, cx, 1) + renderer.eyeHalfWidth(pose, style, u, 1) * 0.4f + QUESTION_OUTSET * u
-        val y = renderer.eyeCenterY(pose, style, u, cy, 1) - renderer.eyeBaseHalfHeight(pose, style, u, 1) - QUESTION_RISE * u
+        val dot = line.width * 0.6f
+        val x = faceRight - q
+        val y = faceTop - ACCENT_GAP * u - q * 2.1f - dot
         path.rewind()
         path.moveTo(x - q, y - q * 0.2f)
         path.cubicTo(x - q, y - q * 1.3f, x + q, y - q * 1.3f, x + q, y - q * 0.2f)
         path.cubicTo(x + q, y + q * 0.5f, x, y + q * 0.4f, x, y + q * 1.2f)
         scope.drawPath(path, accent, alpha = question, style = line)
-        scope.drawCircle(accent, line.width * 0.6f, Offset(x, y + q * 2.1f), alpha = question)
+        scope.drawCircle(accent, dot, Offset(x, y + q * 2.1f), alpha = question)
     }
 
-    private fun drawSleepZ(scope: DrawScope, pose: FacePose, style: FaceStyle, u: Float, cx: Float, cy: Float, accent: Color, line: Stroke) {
+    private fun drawSleepZ(scope: DrawScope, pose: FacePose, u: Float, accent: Color, line: Stroke) {
         val sleep = pose[Channel.SleepZ]
         if (sleep <= 0f) return
-        val baseX = cx + style.eyeSpacing * u + SLEEP_OFFSET_X * u
-        val baseY = cy - SLEEP_OFFSET_Y * u
+        val zLine = renderer.glyphStroke.get(line.width * SLEEP_STROKE)
+        val baseX = faceRight - SLEEP_INSET * u
+        val baseY = faceTop - ACCENT_GAP * u - zLine.width * 0.5f
         for (i in 0 until 3) {
             val alpha = (sleep * 3f - i).coerceIn(0f, 1f)
             if (alpha <= 0f) continue
             val s = SLEEP_SIZE * u * (1f + 0.35f * i)
-            val x = baseX + i * 0.05f * u
-            val y = baseY - i * 0.065f * u
+            val x = baseX + i * SLEEP_STEP_X * u
+            val y = baseY - i * SLEEP_STEP_Y * u - s
             path.rewind()
             path.moveTo(x, y)
             path.lineTo(x + s, y)
             path.lineTo(x, y + s)
             path.lineTo(x + s, y + s)
-            scope.drawPath(path, accent, alpha = alpha, style = line)
+            scope.drawPath(path, accent, alpha = alpha, style = zLine)
         }
     }
 
-    private fun drawThinkDots(scope: DrawScope, pose: FacePose, style: FaceStyle, u: Float, cx: Float, cy: Float, accent: Color) {
+    private fun drawThinkDots(scope: DrawScope, pose: FacePose, u: Float, accent: Color) {
         val think = pose[Channel.ThinkDots]
         if (think <= 0f) return
         for (i in 0 until 3) {
             val alpha = (think * 3f - i).coerceIn(0f, 1f)
             if (alpha <= 0f) continue
-            val x = cx - style.eyeSpacing * u - 0.02f * u + i * 0.045f * u
-            val y = cy - THINK_RISE * u - i * 0.025f * u
-            scope.drawCircle(accent, THINK_DOT * u * (1f + 0.4f * i), Offset(x, y), alpha = alpha)
+            val r = THINK_DOT * u * (1f + 0.4f * i)
+            val x = faceLeft + i * THINK_STEP_X * u
+            val y = faceTop - ACCENT_GAP * u - r - i * THINK_STEP_Y * u
+            scope.drawCircle(accent, r, Offset(x, y), alpha = alpha)
         }
     }
 
@@ -220,12 +253,14 @@ internal class FaceFeatures(private val renderer: FaceRenderer) {
         const val SPARKLE_OUTSET = 0.03f
         const val SPARKLE_SIZE = 0.05f
         const val QUESTION_SIZE = 0.045f
-        const val QUESTION_OUTSET = 0.05f
-        const val QUESTION_RISE = 0.14f
-        const val SLEEP_OFFSET_X = 0.08f
-        const val SLEEP_OFFSET_Y = 0.3f
         const val SLEEP_SIZE = 0.042f
-        const val THINK_RISE = 0.38f
+        const val SLEEP_STEP_X = 0.075f
+        const val SLEEP_INSET = 0.26f
+        const val SLEEP_STROKE = 0.55f
+        const val SLEEP_STEP_Y = 0.085f
+        const val THINK_STEP_X = 0.05f
+        const val THINK_STEP_Y = 0.03f
+        const val ACCENT_GAP = 0.035f
         const val THINK_DOT = 0.017f
     }
 }

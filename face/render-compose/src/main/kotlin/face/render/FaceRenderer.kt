@@ -33,6 +33,7 @@ public class FaceRenderer {
     internal val outlineStroke = StrokeCache()
     private val eyeLineStroke = StrokeCache()
     internal val browStroke = StrokeCache()
+    internal val glyphStroke = StrokeCache()
 
     internal val features = FaceFeatures(this)
 
