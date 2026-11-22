@@ -1,15 +1,10 @@
 package face.core.behavior
 
 import face.core.anim.Layer
+import face.core.director.ReactionRouter
 import face.core.rig.FacePose
 
-// Order from architecture §6: neutral+emotion, activity, gaze, procedural life, speech, reactions. Blink runs after the springs.
-internal class BaseLayer(private val base: FacePose) : Layer() {
-    override fun apply(target: FacePose) {
-        target.copyFrom(base)
-    }
-}
-
+// Order from architecture §6: neutral+emotion (EmotionLayer), activity, gaze, procedural life, speech, reactions. Blink runs after the springs.
 internal class ActivityLayer(private val activity: ActivityController) : Layer() {
     override fun apply(target: FacePose) {
         activity.apply(target)
@@ -48,6 +43,13 @@ internal class SpeechLayer(private val speech: SpeechTrackLayer) : Layer() {
     }
 }
 
-internal class ReactionLayer : Layer() {
-    override fun apply(target: FacePose) = Unit
+internal class ReactionLayer(
+    private val reactions: ReactionRouter,
+    private val quirks: Quirks,
+    private val neutral: FacePose,
+) : Layer() {
+    override fun apply(target: FacePose) {
+        reactions.apply(target, neutral)
+        quirks.apply(target)
+    }
 }
