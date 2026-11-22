@@ -44,6 +44,16 @@ class FaceSnapshotTest {
     }
 
     @Test
+    fun glyphAccentsClearOfTallestEyes() {
+        snapshot(ExpressionId.Confused, FaceStyle.Capsule)
+        snapshot(ExpressionId.Sleeping, FaceStyle.Capsule)
+        val pose = FacePose().also { library.poseInto(it, ExpressionId.Curious) }
+        pose[Channel.ThinkDots] = 1f
+        val revision = mutableIntStateOf(0)
+        paparazzi.snapshot("Capsule_thinking") { FaceCanvas(pose, FaceStyle.Capsule, revision) }
+    }
+
+    @Test
     fun roamingPoses() {
         for ((name, x, y, scale, tilt) in ROAMS) {
             val pose = FacePose().also { library.poseInto(it, ExpressionId.Happy) }
