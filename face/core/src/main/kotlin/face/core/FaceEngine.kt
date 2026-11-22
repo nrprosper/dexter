@@ -1,6 +1,7 @@
 package face.core
 
 import face.api.Activity
+import face.api.DeviceState
 import face.api.Emotion
 import face.api.EmotionSignal
 import face.api.FaceController
@@ -44,6 +45,11 @@ import face.core.mood.EmotionState
 import face.core.mood.MoodModel
 import face.core.personality.PersonalityMapper
 import face.core.rig.Channel
+import face.core.senses.DeviceResponder
+import face.core.senses.FaceTouch
+import face.core.senses.SensesLayer
+import face.core.senses.TouchResponder
+import face.core.senses.VolumeWatch
 import face.core.rig.ChannelGroup
 import face.core.rig.Constraints
 import face.core.rig.FacePose
@@ -94,6 +100,9 @@ public class FaceEngine(
     }
     private val director: Director = Director(ctx, emotionState, mood, hooks)
     private val reactions: ReactionRouter = ReactionRouter(ctx, blink, director)
+    private val device = DeviceResponder(rng, boredom)
+    private val volume = VolumeWatch()
+    private val touch = TouchResponder(ctx, blink, reactions, director)
     private val emotionLayer = EmotionLayer(library, neutral, emotionState, manual)
     private val gazeLayer = GazeLayer(gaze, ctx)
     private val lifeLayer = LifeLayer(idle, boredom, breath, sleepPose, ctx)
@@ -101,7 +110,7 @@ public class FaceEngine(
     private val stack = LayerStack(
         arrayOf(
             emotionLayer, activityLayer, gazeLayer, lifeLayer,
-            SpeechLayer(speech), ReactionLayer(reactions, quirks, neutral),
+            SpeechLayer(speech), SensesLayer(device, volume, touch), ReactionLayer(reactions, quirks, neutral),
         ),
     )
 
@@ -170,6 +179,15 @@ public class FaceEngine(
 
     override fun setPersonality(personality: Personality): Unit = inbox.setPersonality(personality)
 
+    override fun setDeviceState(state: DeviceState): Unit = inbox.setDeviceState(state)
+
+    override fun showVolume(level: Float): Unit = inbox.showVolume(level)
+
+    // A touch hit-tested by the renderer; any touch also counts as interaction. Thread-safe.
+    public fun touch(event: FaceTouch) {
+        inbox.touch(event)
+    }
+
     // Any sign of the user (a tap): resets boredom, and wakes the face if it was sleepy. Thread-safe.
     public fun interact() {
         inbox.poke()
@@ -226,6 +244,9 @@ public class FaceEngine(
         idle.rateScale = IDLE_RATE_BASE + IDLE_RATE_GAIN * emotionState.arousal
         reactions.update(clamped)
         quirks.update(clamped)
+        device.update(clamped)
+        volume.update(clamped)
+        touch.update(clamped)
         if (lifeEnabled) {
             activities.update(clamped, inbox.voiceLevel())
             boredom.update(clamped)
@@ -238,8 +259,9 @@ public class FaceEngine(
         Constraints.apply(target)
         springs.step(target.values, clamped)
         springs.y.copyInto(pose.values)
-        if (lifeEnabled) blink.apply(pose)
         Constraints.apply(pose)
+        // After the lid constraint, so a blink never drags the lower lid along at blink speed.
+        if (lifeEnabled) blink.apply(pose)
         publishIfChanged()
     }
 
@@ -274,6 +296,20 @@ public class FaceEngine(
             }
         }
         inbox.takePowerMode()?.let { powerMode = it }
+        inbox.takeDeviceState()?.let { if (device.set(it)) wakeIfSleepy() }
+        val level = inbox.takeVolume()
+        if (level >= 0f) {
+            volume.show(level)
+            if (activities.current != Activity.Sleeping) wakeIfSleepy()
+        }
+        while (true) {
+            val event = inbox.pollTouch() ?: break
+            if (activities.current == Activity.Sleeping || device.state.faceDown) continue
+            val sleepy = ctx.vigilance == Vigilance.Asleep || ctx.vigilance == Vigilance.Drowsy
+            wakeIfSleepy()
+            boredom.keepAwake()
+            if (!sleepy) touch.handle(event)
+        }
         if (inbox.takePoke() && activities.current != Activity.Sleeping) wakeIfSleepy()
         while (true) {
             val reaction = inbox.pollReaction() ?: break
@@ -296,6 +332,7 @@ public class FaceEngine(
         director.config = p.director
         emotionLayer.configure(p)
         quirks.configure(p.quirks)
+        reactions.playfulGain = p.expressiveness * (PLAYFUL_BASE + PLAYFUL_GAIN * p.playfulness)
         if (!initial) {
             val life = PersonalityMapper.life(p)
             blink.config = life.blink
@@ -367,6 +404,8 @@ public class FaceEngine(
         const val IDLE_RATE_BASE = 0.7f
         const val IDLE_RATE_GAIN = 0.6f
         const val AROUSAL_STEPS = 10f
+        const val PLAYFUL_BASE = 0.7f
+        const val PLAYFUL_GAIN = 0.6f
         val SURPRISE_BEAT: FaceReaction = FaceReaction.Surprise()
     }
 }
