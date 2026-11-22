@@ -19,7 +19,7 @@ If a task conflicts with the architecture doc, stop and ask. Don't quietly diver
 - Gradle Kotlin DSL with a version catalog (`gradle/libs.versions.toml`)
 - Rendering: Compose `Canvas` / `DrawScope`, driven by a single `withFrameNanos` loop
 - Tests: JUnit for pure-Kotlin modules; screenshot tests (Paparazzi or Roborazzi) as a test-only dependency
-- minSdk: TODO (decide in Phase 0). RenderEffect needs 31+, AGSL needs 33+. Every effect must have a plain-Canvas fallback.
+- minSdk: **31** (decided in Phase 0). RenderEffect is available natively; AGSL (33+) only behind a runtime check. Every effect must have a plain-Canvas fallback.
 
 ## Module layout
 
@@ -87,7 +87,7 @@ Run `:face:core:test` before saying a task is done.
 
 ## Open decisions (update as they're made)
 
-- [ ] minSdk
+- [x] minSdk: 31
 - [ ] Face silhouette (eye shape, mouth style, brows or none)
 - [ ] Accent colour and background
 - [ ] Two or three signature quirks
