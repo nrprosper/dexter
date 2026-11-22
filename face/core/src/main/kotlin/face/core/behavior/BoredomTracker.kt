@@ -43,6 +43,12 @@ internal class BoredomTracker(private val config: BoredomConfig, private val ctx
         return false
     }
 
+    fun keepAwake() {
+        idleTime = 0f
+        ctx.drowsiness = 0f
+        if (ctx.vigilance == Vigilance.Drowsy) enter(Vigilance.Awake)
+    }
+
     fun dozeOff() {
         idleTime = max(idleTime, config.sleepAfter)
     }

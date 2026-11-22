@@ -15,6 +15,8 @@ internal class BlinkScheduler(private val config: BlinkConfig, private val rng: 
     private var suppressedFor = 0f
     private var sinceLast = Float.MAX_VALUE
 
+    var intervalScale = 1f
+
     var spontaneousCount = 0
         private set
     var doubleCount = 0
@@ -106,7 +108,8 @@ internal class BlinkScheduler(private val config: BlinkConfig, private val rng: 
 
     private fun duration(speed: Float): Float = (config.close + config.hold + config.open) * speed
 
-    private fun sampleInterval(): Float = max(config.minInterval, rng.nextLogNormal(config.meanInterval, config.spread))
+    private fun sampleInterval(): Float =
+        max(config.minInterval, rng.nextLogNormal(config.meanInterval, config.spread) * intervalScale)
 
     companion object {
         const val TRIGGERED = "triggered"
