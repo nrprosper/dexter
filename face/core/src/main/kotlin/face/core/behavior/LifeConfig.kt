@@ -9,6 +9,7 @@ public data class LifeConfig(
     val breath: BreathConfig = BreathConfig(),
     val boredom: BoredomConfig = BoredomConfig(),
     val idle: IdleConfig = IdleConfig(),
+    val activity: ActivityConfig = ActivityConfig(),
 ) {
     public companion object {
         public val Default: LifeConfig = LifeConfig()

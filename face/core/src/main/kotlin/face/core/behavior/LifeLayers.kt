@@ -10,8 +10,10 @@ internal class BaseLayer(private val base: FacePose) : Layer() {
     }
 }
 
-internal class ActivityLayer : Layer() {
-    override fun apply(target: FacePose) = Unit
+internal class ActivityLayer(private val activity: ActivityController) : Layer() {
+    override fun apply(target: FacePose) {
+        activity.apply(target)
+    }
 }
 
 internal class GazeLayer(private val gaze: GazeController, private val ctx: LifeContext) : Layer() {
@@ -40,8 +42,10 @@ internal class LifeLayer(
     }
 }
 
-internal class SpeechLayer : Layer() {
-    override fun apply(target: FacePose) = Unit
+internal class SpeechLayer(private val speech: SpeechTrackLayer) : Layer() {
+    override fun apply(target: FacePose) {
+        speech.apply(target)
+    }
 }
 
 internal class ReactionLayer : Layer() {
