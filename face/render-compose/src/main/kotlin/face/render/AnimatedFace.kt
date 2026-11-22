@@ -22,7 +22,11 @@ public fun AnimatedFace(
     style: FaceStyle = FaceStyle.Default,
     stats: FrameStats? = null,
     timeScale: Int = 1,
+    touchable: Boolean = true,
 ) {
+    val renderer = remember { FaceRenderer() }
+    val currentStyle = rememberUpdatedState(style)
+    val clock = remember(engine) { { engine.time.toFloat() } }
     val frame = remember { mutableIntStateOf(0) }
     val scale = rememberUpdatedState(timeScale)
     val lifecycle = LocalLifecycleOwner.current.lifecycle
@@ -45,7 +49,8 @@ public fun AnimatedFace(
             }
         }
     }
-    FaceCanvas(engine.pose, style, frame, modifier)
+    val touches = if (touchable) Modifier.faceTouches(engine, renderer) { currentStyle.value } else Modifier
+    FaceCanvas(engine.pose, style, frame, modifier.then(touches), renderer, clock)
 }
 
 public class FrameStats {
