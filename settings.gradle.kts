@@ -24,3 +24,5 @@ dependencyResolutionManagement {
 
 rootProject.name = "dexter"
 include(":app")
+include(":face:api")
+include(":face:core")
