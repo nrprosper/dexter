@@ -16,6 +16,9 @@ public enum class Channel(
     EyeHeightL(ChannelGroup.EyeShape, 0.5f, 1.5f, 1f),
     EyeHeightR(ChannelGroup.EyeShape, 0.5f, 1.5f, 1f),
     EyeRoundness(ChannelGroup.EyeShape, -1f, 1f, 0f),
+    EyeSmileL(ChannelGroup.EyeShape, 0f, 1f, 0f),
+    EyeSmileR(ChannelGroup.EyeShape, 0f, 1f, 0f),
+    EyeSquint(ChannelGroup.EyeShape, 0f, 1f, 0f),
 
     UpperLidTiltL(ChannelGroup.Lids, -1f, 1f, 0f),
     UpperLidTiltR(ChannelGroup.Lids, -1f, 1f, 0f),
@@ -46,11 +49,12 @@ public enum class Channel(
     MouthRoundness(ChannelGroup.Mouth, 0f, 1f, 0f),
     MouthAsymmetry(ChannelGroup.Mouth, -1f, 1f, 0f),
     MouthY(ChannelGroup.Mouth, -1f, 1f, 0f),
+    MouthThickness(ChannelGroup.Mouth, 0.5f, 2f, 1f),
 
     HeadX(ChannelGroup.Head, -1f, 1f, 0f),
     HeadY(ChannelGroup.Head, -1f, 1f, 0f),
     HeadTilt(ChannelGroup.Head, -1f, 1f, 0f),
-    HeadScale(ChannelGroup.Head, 0.8f, 1.2f, 1f),
+    HeadScale(ChannelGroup.Head, 0.5f, 1.8f, 1f),
     HeadSquash(ChannelGroup.Head, -1f, 1f, 0f),
 
     Blush(ChannelGroup.Accents, 0f, 1f, 0f),
