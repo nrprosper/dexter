@@ -10,7 +10,8 @@ import face.core.rig.FacePose
 internal class SpeechTrackLayer {
     private val frame = MouthFrame()
     private var track: SpeechTrack? = null
-    private var energy = 0.5f
+    var energy = 0.5f
+        private set
     var nowNanos = 0L
 
     val speaking: Boolean get() = track != null

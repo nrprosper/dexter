@@ -7,27 +7,49 @@ import face.core.time.ShuffleBag
 
 // Picks micro-behaviours from a weighted shuffle bag, respecting cooldowns and an attention budget per minute.
 internal class IdleScheduler(
-    private val config: IdleConfig,
+    config: IdleConfig,
     private val rng: Rng,
     private val ctx: LifeContext,
     private val gaze: GazeController,
 ) {
-    private val behaviors = config.behaviors.toTypedArray()
-    private val channels = Array(behaviors.size) { i -> behaviors[i].deltas.keys.map { it.ordinal }.toIntArray() }
-    private val deltas = Array(behaviors.size) { i -> behaviors[i].deltas.values.toFloatArray() }
-    private val mirrored = Array(behaviors.size) { i ->
-        val b = behaviors[i]
-        BooleanArray(b.deltas.size) { k -> b.deltas.keys.elementAt(k) in b.mirrored }
-    }
-    private val cooldownLeft = FloatArray(behaviors.size)
-    private val bag = ShuffleBag(IntArray(behaviors.size) { behaviors[it].weight }, rng)
-    private val recentStarts = DoubleArray(config.budgetPerMinute.coerceAtLeast(1)) { Double.NEGATIVE_INFINITY }
+    private lateinit var config: IdleConfig
+    private lateinit var behaviors: Array<IdleBehavior>
+    private lateinit var channels: Array<IntArray>
+    private lateinit var deltas: Array<FloatArray>
+    private lateinit var mirrored: Array<BooleanArray>
+    private lateinit var cooldownLeft: FloatArray
+    private lateinit var bag: ShuffleBag
+    private lateinit var recentStarts: DoubleArray
     private var recentHead = 0
-    private var untilNext = sampleInterval()
+    private var untilNext = 0f
     private var active = -1
+    var rateScale = 1f
     private var elapsed = 0f
     private var sign = 1f
     private var last = -1
+
+    init {
+        configure(config)
+    }
+
+    // Rebuilds the compiled behaviours; only called when the personality changes.
+    fun configure(config: IdleConfig) {
+        this.config = config
+        behaviors = config.behaviors.toTypedArray()
+        channels = Array(behaviors.size) { i -> behaviors[i].deltas.keys.map { it.ordinal }.toIntArray() }
+        deltas = Array(behaviors.size) { i -> behaviors[i].deltas.values.toFloatArray() }
+        mirrored = Array(behaviors.size) { i ->
+            val b = behaviors[i]
+            BooleanArray(b.deltas.size) { k -> b.deltas.keys.elementAt(k) in b.mirrored }
+        }
+        cooldownLeft = FloatArray(behaviors.size)
+        bag = ShuffleBag(IntArray(behaviors.size) { behaviors[it].weight }, rng)
+        recentStarts = DoubleArray(config.budgetPerMinute.coerceAtLeast(1)) { Double.NEGATIVE_INFINITY }
+        recentHead = 0
+        active = -1
+        last = -1
+        untilNext = sampleInterval()
+    }
 
     fun update(dt: Float) {
         for (i in cooldownLeft.indices) if (cooldownLeft[i] > 0f) cooldownLeft[i] -= dt
@@ -96,7 +118,7 @@ internal class IdleScheduler(
     }
 
     private fun sampleInterval(): Float =
-        rng.nextLogNormal(config.meanInterval, config.spread) / (1f - ENERGY_DROP * ctx.drowsiness)
+        rng.nextLogNormal(config.meanInterval, config.spread) / ((1f - ENERGY_DROP * ctx.drowsiness) * rateScale)
 
     private companion object {
         const val ATTEMPTS = 6

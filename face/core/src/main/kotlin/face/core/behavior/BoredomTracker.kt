@@ -7,7 +7,7 @@ import kotlin.math.max
 import kotlin.math.min
 
 // The longer nobody interacts, the lower the energy: awake, then drowsy (heavy lids), then asleep. A tap wakes it.
-internal class BoredomTracker(private val config: BoredomConfig, private val ctx: LifeContext) {
+internal class BoredomTracker(var config: BoredomConfig, private val ctx: LifeContext) {
     private var idleTime = 0f
     private var wakeElapsed = 0f
 

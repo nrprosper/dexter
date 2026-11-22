@@ -11,7 +11,7 @@ import kotlin.math.sqrt
 
 // Gaze is a target point: mostly on the user, with occasional glances away; pupils jump there, the head follows slowly.
 internal class GazeController(
-    private val config: GazeConfig,
+    var config: GazeConfig,
     private val rng: Rng,
     private val ctx: LifeContext,
     private val blink: BlinkScheduler,

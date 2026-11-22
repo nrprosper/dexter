@@ -3,6 +3,7 @@ package face.core.inbox
 import face.api.Activity
 import face.api.EmotionSignal
 import face.api.FaceReaction
+import face.api.Personality
 import face.api.PowerMode
 import face.api.SpeechStyle
 import face.api.SpeechTrack
@@ -17,6 +18,7 @@ internal class FaceInbox {
     private val emotion = AtomicReference<EmotionSignal?>(null)
     private val speech = AtomicReference<SpeechCommand?>(null)
     private val power = AtomicReference<PowerMode?>(null)
+    private val personality = AtomicReference<Personality?>(null)
     private val voiceBits = AtomicInteger(0f.toRawBits())
     private val poked = AtomicBoolean(false)
     private val reactions = ConcurrentLinkedQueue<FaceReaction>()
@@ -30,6 +32,8 @@ internal class FaceInbox {
     fun detachSpeech() = speech.set(SpeechCommand.Detach)
 
     fun setPowerMode(value: PowerMode) = power.set(value)
+
+    fun setPersonality(value: Personality) = personality.set(value)
 
     fun setVoiceLevel(level: Float) = voiceBits.set(level.coerceIn(0f, 1f).toRawBits())
 
@@ -46,6 +50,8 @@ internal class FaceInbox {
     fun takeSpeech(): SpeechCommand? = speech.getAndSet(null)
 
     fun takePowerMode(): PowerMode? = power.getAndSet(null)
+
+    fun takePersonality(): Personality? = personality.getAndSet(null)
 
     fun takePoke(): Boolean = poked.getAndSet(false)
 

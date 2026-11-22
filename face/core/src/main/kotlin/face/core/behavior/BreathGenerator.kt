@@ -6,7 +6,7 @@ import kotlin.math.PI
 import kotlin.math.sin
 
 // A barely visible bob and scale that removes "frozen image" stillness; slower and deeper asleep.
-internal class BreathGenerator(private val config: BreathConfig, private val ctx: LifeContext) {
+internal class BreathGenerator(var config: BreathConfig, private val ctx: LifeContext) {
     private var phase = 0f
 
     fun update(dt: Float) {
