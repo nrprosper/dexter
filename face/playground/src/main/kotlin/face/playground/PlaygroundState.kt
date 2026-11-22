@@ -43,6 +43,11 @@ internal class PlaygroundState(private val library: ExpressionLibrary, saved: Li
         publish()
     }
 
+    fun center() {
+        for (c in HEAD_PLACEMENT) edited[c] = c.rest
+        publish()
+    }
+
     fun set(channel: Channel, value: Float) {
         edited[channel] = value
         selected = null
@@ -67,5 +72,9 @@ internal class PlaygroundState(private val library: ExpressionLibrary, saved: Li
         Constraints.apply(display)
         for (c in Channel.entries) values[c.ordinal] = edited[c]
         revision.intValue++
+    }
+
+    private companion object {
+        val HEAD_PLACEMENT = listOf(Channel.HeadX, Channel.HeadY, Channel.HeadTilt, Channel.HeadScale)
     }
 }

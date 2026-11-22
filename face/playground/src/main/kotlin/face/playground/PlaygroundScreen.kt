@@ -42,8 +42,10 @@ import androidx.compose.ui.unit.dp
 import face.core.expression.ExpressionId
 import face.core.rig.Channel
 import face.render.Accents
+import face.render.Backdrop
 import face.render.FaceCanvas
 import face.render.FaceStyle
+import face.render.MouthStyle
 
 @Composable
 internal fun PlaygroundScreen(state: PlaygroundState, onSave: (String) -> String) {
@@ -82,16 +84,27 @@ private fun Controls(state: PlaygroundState, onSave: (String) -> String, modifie
                 items(FaceStyle.Silhouettes) { silhouette ->
                     FilterChip(
                         selected = state.style.name == silhouette.name,
-                        onClick = { state.style = silhouette.copy(accent = state.style.accent, showBrows = state.style.showBrows) },
+                        onClick = {
+                            state.style = silhouette.copy(
+                                accent = state.style.accent,
+                                showBrows = state.style.showBrows,
+                                mouthStyle = state.style.mouthStyle,
+                                backdrop = state.style.backdrop,
+                            )
+                        },
                         label = { Text(silhouette.name) },
                     )
                 }
-                item {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text("Brows", style = MaterialTheme.typography.labelLarge)
-                        Spacer(Modifier.width(6.dp))
-                        Switch(state.style.showBrows, { state.style = state.style.copy(showBrows = it) })
-                    }
+            }
+        }
+        item {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                Toggle("Brows", state.style.showBrows) { state.style = state.style.copy(showBrows = it) }
+                Toggle("Filled", state.style.mouthStyle == MouthStyle.Filled) {
+                    state.style = state.style.copy(mouthStyle = if (it) MouthStyle.Filled else MouthStyle.Stroke)
+                }
+                Toggle("Glow", state.style.backdrop == Backdrop.Glow) {
+                    state.style = state.style.copy(backdrop = if (it) Backdrop.Glow else Backdrop.Dark)
                 }
             }
         }
@@ -120,7 +133,7 @@ private fun Controls(state: PlaygroundState, onSave: (String) -> String, modifie
         }
         item {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                OutlinedButton({ state.load(ExpressionId.Neutral) }) { Text("Neutral") }
+                OutlinedButton({ state.center() }) { Text("Center") }
                 OutlinedTextField(name, { name = it }, Modifier.weight(1f), label = { Text("pose name") }, singleLine = true)
                 Button({ status = onSave(name) }, enabled = PoseStore.sanitize(name).isNotEmpty()) { Text("Save") }
             }
@@ -132,6 +145,15 @@ private fun Controls(state: PlaygroundState, onSave: (String) -> String, modifie
             }
             items(group.value, key = { it.key }) { channel -> ChannelSlider(state, channel) }
         }
+    }
+}
+
+@Composable
+private fun Toggle(label: String, checked: Boolean, onChange: (Boolean) -> Unit) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Text(label, style = MaterialTheme.typography.labelLarge)
+        Spacer(Modifier.width(4.dp))
+        Switch(checked, onChange)
     }
 }
 
