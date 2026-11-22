@@ -11,10 +11,11 @@ The current focus is the **Face Engine**, a self-contained set of modules that t
 | 0 | Project skeleton: modules, version catalog, blank `FaceView` | Done |
 | 1 | Static rig, bold renderer, three silhouettes, 14 expressions, playground | Done: Orb silhouette, mint accent |
 | 2 | Frame loop, springs, frame-rate independent motion | Done |
-| 3 | Life: blink, gaze, breathing, idle | Next |
-| 4–8 | API, emotion, speech, integration, polish | Planned |
+| 3 | Life: blink, gaze, breathing, idle, boredom and sleep | Done (10-minute desk test is yours) |
+| 4 | Activity layer and public API | Next |
+| 5–8 | Emotion, speech, integration, polish | Planned |
 
-The app opens to the Orb face (mint) on a black, immersive screen. Every change animates through springs; the face doesn't move on its own yet (that is Phase 3).
+The app opens to the Orb face (mint) on a black, immersive screen. Left alone it blinks, glances around, breathes and does small idle things; after a while without interaction it gets drowsy and falls asleep. Tap it to wake it.
 
 ## Requirements
 
@@ -64,6 +65,16 @@ What the renderer can do:
 - Motion is the same at 30, 60 and 120 Hz: each frame is integrated in fixed sub-steps of at most 1/240 s, and `dt` is clamped to 50 ms.
 - `AnimatedFace` runs one `withFrameNanos` loop only while the screen is at least `STARTED`. The pose is read only in the draw phase, so nothing recomposes per frame.
 
+## Life (Phase 3)
+
+Each frame the engine builds the target through a fixed layer stack (neutral and emotion, activity, gaze, procedural life, speech, reactions), the springs follow it, and the **blink** is applied last to the displayed pose. Blinks are an authored curve, which springs would smear away. All timing comes from the engine's seeded `Rng` and `LifeConfig`:
+
+- **Blinks:** log-normal intervals (about every 4 s), fast close and slower open; occasional double and slow blinks, partial blinks when drowsy; extra blinks on big gaze jumps and expression changes; none during surprise or sleep.
+- **Gaze:** a target point, mostly on you, with glances away and back, tiny fixation drift, and the head following with lag.
+- **Idle behaviours:** tilt, hum, squint, look-around, bounce, posture shift and yawn (drowsy only), picked from a weighted shuffle bag with cooldowns and an **attention budget** (at most 4 noticeable per minute).
+- **Boredom:** drowsy after 90 s without interaction (heavier lids, slower blinks), asleep after 180 s ("Zzz", slow deep breathing). `interact()` (a tap) wakes it with a double blink, a stretch and a look at you.
+- **Breathing:** a barely visible bob and scale.
+
 ## Face Playground (debug builds)
 
 A debug install adds a second launcher icon, **Face Playground**.
@@ -72,7 +83,8 @@ A debug install adds a second launcher icon, **Face Playground**.
 - Tap an expression chip to animate to it, then drag any slider (the face follows through the springs). Tap a channel's label to reset it.
 - **Spam random targets** throws a random expression (often at a random place, size and tilt) every 0.12–0.45 s: the stress test for pops.
 - **Dynamics** has live f / ζ / r sliders per channel group, plus Reset.
-- The top-right overlay shows fps and the worst frame time of the last half second.
+- The top-right overlay shows fps and the worst frame time of the last half second; bottom-left shows awake / drowsy / asleep.
+- **Life** turns the behaviours on or off, **×10** speeds up time, **Doze** sends it to sleep now, and the **Behaviour log** lists blinks, behaviours and state changes as they happen.
 - Tap the face for a full-screen view. In full screen, tap to step through the expressions; long-press to go back.
 - **Save** writes the pose as delta JSON and copies it to the clipboard. To copy saved poses into the repo:
   ```bash
