@@ -91,5 +91,5 @@ Run `:face:core:test` before saying a task is done.
 - [ ] Face silhouette (eye shape, mouth style, brows or none)
 - [ ] Accent colour and background
 - [ ] Two or three signature quirks
-- [ ] JSON format for expressions and personality
+- [ ] JSON format for expressions and personality (expressions decided in Phase 1: `{format: 1, id, deltas: {channelKey: delta}}`, deltas relative to neutral; personality still open, Phase 5)
 - [ ] TTS source (on-device or cloud), which affects the speech phase
