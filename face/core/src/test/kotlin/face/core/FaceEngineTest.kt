@@ -16,7 +16,7 @@ class FaceEngineTest {
 
     // Random expression switches and random raw targets, decided by a seeded Rng.
     private fun randomSession(seed: Long, frames: Int, dt: Float, onFrame: (FacePose) -> Unit) {
-        val engine = FaceEngine(library)
+        val engine = FaceEngine(library, Rng(seed * 31 + 7))
         val rng = Rng(seed)
         val raw = FacePose()
         repeat(frames) {
@@ -77,7 +77,7 @@ class FaceEngineTest {
 
     // Changes expression every half second; samples the pose every 1/30 s.
     private fun scripted(rate: Int): List<FloatArray> {
-        val engine = FaceEngine(library)
+        val engine = FaceEngine(library, Rng(1)).apply { lifeEnabled = false }
         val script = listOf(ExpressionId.Happy, ExpressionId.Surprised, ExpressionId.Sad, ExpressionId.Laugh, ExpressionId.Determined)
         val perSample = rate / 30
         val samples = ArrayList<FloatArray>()
@@ -91,7 +91,7 @@ class FaceEngineTest {
 
     @Test
     fun resumeDoesNotJump() {
-        val engine = FaceEngine(library)
+        val engine = FaceEngine(library, Rng(1)).apply { lifeEnabled = false }
         engine.setExpression(ExpressionId.Surprised)
         repeat(6) { engine.step(1f / 60f) }
         engine.onResume()
@@ -103,8 +103,8 @@ class FaceEngineTest {
     }
 
     @Test
-    fun stepDoesNotAllocate() {
-        val engine = FaceEngine(library)
+    fun stepDoesNotAllocateEvenWithLifeRunning() {
+        val engine = FaceEngine(library, Rng(5))
         engine.setExpression(ExpressionId.Laugh)
         repeat(20_000) { engine.step(1f / 60f) }
         val threads = ManagementFactory.getThreadMXBean() as com.sun.management.ThreadMXBean
