@@ -20,5 +20,10 @@ public interface FaceController {
 
     public fun setPersonality(personality: Personality)
 
+    public fun setDeviceState(state: DeviceState)
+
+    // The system volume panel is showing this level (0..1): the face makes room and watches it.
+    public fun showVolume(level: Float)
+
     public val snapshot: StateFlow<FaceSnapshot>
 }
