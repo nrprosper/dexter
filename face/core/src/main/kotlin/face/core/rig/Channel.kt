@@ -63,9 +63,11 @@ public enum class Channel(
     Question(ChannelGroup.Accents, 0f, 1f, 0f),
     SleepZ(ChannelGroup.Accents, 0f, 1f, 0f),
     ThinkDots(ChannelGroup.Accents, 0f, 1f, 0f),
+    Dizzy(ChannelGroup.Accents, 0f, 1f, 0f),
 
     Glow(ChannelGroup.Look, 0f, 1f, 0.5f),
     TintShift(ChannelGroup.Look, 0f, 1f, 0f),
+    WarnTint(ChannelGroup.Look, 0f, 1f, 0f),
     ;
 
     public val key: String = name.replaceFirstChar { it.lowercaseChar() }
