@@ -183,6 +183,11 @@ public class FaceEngine(
 
     override fun showVolume(level: Float): Unit = inbox.showVolume(level)
 
+    // The UI reports the canvas size so screen-aware behaviours (the volume visit) pick the right side.
+    public fun setViewport(width: Float, height: Float) {
+        volume.portrait = height > width
+    }
+
     // A touch hit-tested by the renderer; any touch also counts as interaction. Thread-safe.
     public fun touch(event: FaceTouch) {
         inbox.touch(event)

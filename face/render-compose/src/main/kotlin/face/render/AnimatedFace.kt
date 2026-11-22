@@ -7,6 +7,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.repeatOnLifecycle
@@ -50,7 +51,8 @@ public fun AnimatedFace(
         }
     }
     val touches = if (touchable) Modifier.faceTouches(engine, renderer) { currentStyle.value } else Modifier
-    FaceCanvas(engine.pose, style, frame, modifier.then(touches), renderer, clock)
+    val viewport = Modifier.onSizeChanged { engine.setViewport(it.width.toFloat(), it.height.toFloat()) }
+    FaceCanvas(engine.pose, style, frame, modifier.then(viewport).then(touches), renderer, clock)
 }
 
 public class FrameStats {

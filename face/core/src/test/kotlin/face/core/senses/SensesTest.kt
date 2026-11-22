@@ -104,6 +104,16 @@ class SensesTest {
     }
 
     @Test
+    fun inPortraitTheVisitGoesAcrossFromThePanel() {
+        val face = engine()
+        face.setViewport(1080f, 2340f)
+        face.showVolume(0.5f)
+        face.run(1.2f)
+        assertTrue(face.pose[Channel.HeadX] < -0.15f && face.pose[Channel.HeadY] > 0.3f, "should sit near the top-left")
+        assertTrue(face.pose[Channel.GazeX] > 0.5f, "should look across at the panel on the right")
+    }
+
+    @Test
     fun touchingPartsGivesTheirReactions() {
         val face = engine()
         face.run(1f)

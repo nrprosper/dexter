@@ -5,12 +5,13 @@ import face.core.rig.Channel
 import face.core.rig.FacePose
 import kotlin.math.min
 
-// While the system volume panel is up, the face scoots up and to the right, shrinks a little and watches the level.
+// While the volume panel is up, the face makes room and watches the level (portrait: near the top-left, across from it).
 internal class VolumeWatch {
     private var level = 0f
     private var since = Float.MAX_VALUE
     private var weight = 0f
     private var bounce = -1f
+    var portrait = false
 
     fun show(level: Float) {
         this.level = level.coerceIn(0f, 1f)
@@ -33,11 +34,11 @@ internal class VolumeWatch {
         if (bounce >= 0f) add(pose, Channel.HeadSquash, BOUNCE * Envelope.value(bounce, BOUNCE_ATTACK, 0f, BOUNCE_RELEASE))
         val w = weight
         if (w <= MIN_WEIGHT) return
-        add(pose, Channel.HeadX, MOVE_X * w)
-        add(pose, Channel.HeadY, MOVE_Y * w)
+        add(pose, Channel.HeadX, (if (portrait) MOVE_X_PORTRAIT else MOVE_X) * w)
+        add(pose, Channel.HeadY, (if (portrait) MOVE_Y_PORTRAIT else MOVE_Y) * w)
         add(pose, Channel.HeadScale, SHRINK * w)
         add(pose, Channel.HeadTilt, TILT * w)
-        pull(pose, Channel.GazeX, LOOK_X, w)
+        pull(pose, Channel.GazeX, if (portrait) LOOK_X_PORTRAIT else LOOK_X, w)
         pull(pose, Channel.GazeY, LOOK_LOW + (LOOK_HIGH - LOOK_LOW) * level, w)
         add(pose, Channel.BrowHeightL, BROWS_PER_LEVEL * level * w)
         add(pose, Channel.BrowHeightR, BROWS_PER_LEVEL * level * w)
@@ -74,6 +75,9 @@ internal class VolumeWatch {
         const val MIN_WEIGHT = 0.001f
         const val MOVE_X = 0.2f
         const val MOVE_Y = 0.45f
+        const val MOVE_X_PORTRAIT = -0.3f
+        const val MOVE_Y_PORTRAIT = 0.5f
+        const val LOOK_X_PORTRAIT = 0.75f
         const val SHRINK = -0.3f
         const val TILT = 0.12f
         const val LOOK_X = 0.55f
