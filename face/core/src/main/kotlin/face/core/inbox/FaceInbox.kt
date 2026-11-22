@@ -24,6 +24,8 @@ internal class FaceInbox {
     private val device = AtomicReference<DeviceState?>(null)
     private val volumeBits = AtomicInteger(0)
     private val volumeShown = AtomicBoolean(false)
+    private val tiltXBits = AtomicInteger(0f.toRawBits())
+    private val tiltYBits = AtomicInteger(0f.toRawBits())
     private val touches = ConcurrentLinkedQueue<FaceTouch>()
     private val voiceBits = AtomicInteger(0f.toRawBits())
     private val poked = AtomicBoolean(false)
@@ -47,6 +49,15 @@ internal class FaceInbox {
         volumeBits.set(level.coerceIn(0f, 1f).toRawBits())
         volumeShown.set(true)
     }
+
+    fun setTilt(x: Float, y: Float) {
+        tiltXBits.set(x.coerceIn(-1f, 1f).toRawBits())
+        tiltYBits.set(y.coerceIn(-1f, 1f).toRawBits())
+    }
+
+    fun tiltX(): Float = Float.fromBits(tiltXBits.get())
+
+    fun tiltY(): Float = Float.fromBits(tiltYBits.get())
 
     fun touch(value: FaceTouch) {
         touches.add(value)
