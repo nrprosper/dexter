@@ -10,14 +10,28 @@
 </p>
 
 <p align="center">
-  <img src="face/render-compose/src/test/snapshots/images/face.render_FaceSnapshotTest_everyExpressionOnDefaultStyle_orb_neutral.png" width="110" alt="neutral" />
-  <img src="face/render-compose/src/test/snapshots/images/face.render_FaceSnapshotTest_everyExpressionOnDefaultStyle_orb_joy.png" width="110" alt="joy" />
-  <img src="face/render-compose/src/test/snapshots/images/face.render_FaceSnapshotTest_everyExpressionOnDefaultStyle_orb_laugh.png" width="110" alt="laugh" />
-  <img src="face/render-compose/src/test/snapshots/images/face.render_FaceSnapshotTest_everyExpressionOnDefaultStyle_orb_surprised.png" width="110" alt="surprised" />
-  <img src="face/render-compose/src/test/snapshots/images/face.render_FaceSnapshotTest_everyExpressionOnDefaultStyle_orb_determined.png" width="110" alt="determined" />
-  <img src="face/render-compose/src/test/snapshots/images/face.render_FaceSnapshotTest_everyExpressionOnDefaultStyle_orb_sleeping.png" width="110" alt="sleeping" />
-  <img src="face/render-compose/src/test/snapshots/images/face.render_FaceSnapshotTest_lowBatteryRedAndDizzyLines_phone_lowbattery.png" width="110" alt="low battery" />
-  <img src="face/render-compose/src/test/snapshots/images/face.render_FaceSnapshotTest_lowBatteryRedAndDizzyLines_phone_dizzy.png" width="110" alt="dizzy" />
+  <img src="face/render-compose/src/test/snapshots/images/face.render_ReadmeGalleryTest_expressions_neutral.png" width="96" alt="neutral" />
+  <img src="face/render-compose/src/test/snapshots/images/face.render_ReadmeGalleryTest_expressions_joy.png" width="96" alt="joy" />
+  <img src="face/render-compose/src/test/snapshots/images/face.render_ReadmeGalleryTest_expressions_laugh.png" width="96" alt="laugh" />
+  <img src="face/render-compose/src/test/snapshots/images/face.render_ReadmeGalleryTest_expressions_surprised.png" width="96" alt="surprised" />
+  <img src="face/render-compose/src/test/snapshots/images/face.render_ReadmeGalleryTest_expressions_determined.png" width="96" alt="determined" />
+  <img src="face/render-compose/src/test/snapshots/images/face.render_ReadmeGalleryTest_expressions_sleeping.png" width="96" alt="sleeping" />
+  <img src="face/render-compose/src/test/snapshots/images/face.render_ReadmeGalleryTest_expressions_lowbattery.png" width="96" alt="low battery" />
+  <img src="face/render-compose/src/test/snapshots/images/face.render_ReadmeGalleryTest_expressions_dizzy.png" width="96" alt="dizzy" />
+  <br/>
+  <sub>Expressions: neutral · joy · laugh · surprised · determined · sleeping · low battery · dizzy</sub>
+</p>
+
+<p align="center">
+  <img src="face/render-compose/src/test/snapshots/images/face.render_ReadmeGalleryTest_watching_lookleft.png" width="96" alt="looking left" />
+  <img src="face/render-compose/src/test/snapshots/images/face.render_ReadmeGalleryTest_watching_lookupright.png" width="96" alt="looking up" />
+  <img src="face/render-compose/src/test/snapshots/images/face.render_ReadmeGalleryTest_watching_watchdownright.png" width="96" alt="watching down" />
+  <img src="face/render-compose/src/test/snapshots/images/face.render_ReadmeGalleryTest_watching_thinking.png" width="96" alt="thinking" />
+  <img src="face/render-compose/src/test/snapshots/images/face.render_ReadmeGalleryTest_watching_petting.png" width="96" alt="being petted" />
+  <img src="face/render-compose/src/test/snapshots/images/face.render_ReadmeGalleryTest_watching_eyepoke.png" width="96" alt="eye poked" />
+  <img src="art/gallery/volume-watch.png" width="96" alt="watching the volume slider" />
+  <br/>
+  <sub>Always watching: looking around, thinking, being petted, an eye poke, and (on a real phone) moving aside to watch the volume slider</sub>
 </p>
 
 ## What it does today
