@@ -9,4 +9,7 @@ public data class FaceSnapshot(
     val asleep: Boolean = false,
     val powerMode: PowerMode = PowerMode.Full,
     val lastReaction: FaceReaction? = null,
+    val mood: Emotion = Emotion.Neutral,
+    val arousal: Float = 0.5f,
+    val personality: String = "dexter",
 )

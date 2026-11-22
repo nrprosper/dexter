@@ -18,5 +18,7 @@ public interface FaceController {
 
     public fun setPowerMode(mode: PowerMode)
 
+    public fun setPersonality(personality: Personality)
+
     public val snapshot: StateFlow<FaceSnapshot>
 }
