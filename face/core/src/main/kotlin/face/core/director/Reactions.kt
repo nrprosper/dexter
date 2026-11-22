@@ -52,6 +52,12 @@ internal object Reactions {
     const val BONK = 16
     const val POUT = 17
     const val GRUMPY = 18
+    const val TOO_BRIGHT = 19
+    const val SCREENSHOT = 20
+    const val WELCOME_BACK = 21
+    const val WELCOME_BACK_LONG = 22
+    const val GOOD_MORNING = 23
+    const val LATE_NIGHT = 24
 
     fun indexOf(reaction: FaceReaction): Int = when (reaction) {
         is FaceReaction.Surprise -> SURPRISE
@@ -66,6 +72,11 @@ internal object Reactions {
         FaceReaction.BatteryFull -> BATTERY_FULL
         FaceReaction.HeadphonesIn -> HEADPHONES_IN
         FaceReaction.Shaken -> SHAKEN
+        FaceReaction.TooBright -> TOO_BRIGHT
+        FaceReaction.Screenshot -> SCREENSHOT
+        is FaceReaction.WelcomeBack -> if (reaction.longAbsence) WELCOME_BACK_LONG else WELCOME_BACK
+        FaceReaction.GoodMorning -> GOOD_MORNING
+        FaceReaction.LateNight -> LATE_NIGHT
     }
 
     val Defaults: Array<ReactionDef> = arrayOf(
@@ -234,6 +245,61 @@ internal object Reactions {
             ),
             add = mapOf(Channel.HeadX to -0.12f, Channel.HeadTilt to -0.15f, Channel.HeadSquash to -0.1f),
             followUp = Emotion.Playful, followUpIntensity = 0.5f, playful = true,
+        ),
+        ReactionDef(
+            "TooBright", priority = 2, cooldown = 4f, attack = 0.08f, hold = 0.7f, release = 0.5f,
+            set = mapOf(
+                Channel.EyeSquint to 0.7f, Channel.BrowHeightL to -0.3f, Channel.BrowHeightR to -0.3f,
+                Channel.BrowTiltL to 0.4f, Channel.BrowTiltR to 0.4f, Channel.MouthCurve to -0.2f, Channel.MouthWidth to -0.15f,
+            ),
+            add = mapOf(Channel.HeadScale to -0.05f, Channel.HeadSquash to -0.15f),
+            playful = true,
+        ),
+        ReactionDef(
+            "Screenshot", priority = 2, cooldown = 2f, attack = 0.06f, hold = 0.7f, release = 0.5f,
+            set = mapOf(
+                Channel.EyeSmileL to 1f, Channel.MouthCurve to 0.85f, Channel.MouthOpen to 0.35f, Channel.BrowHeightR to 0.5f,
+            ),
+            add = mapOf(Channel.HeadTilt to 0.15f, Channel.Sparkle to 1f, Channel.HeadSquash to 0.15f),
+            blinkOnStart = true, playful = true,
+        ),
+        ReactionDef(
+            "WelcomeBack", priority = 2, cooldown = 3f, attack = 0.12f, hold = 0.5f, release = 0.5f,
+            set = mapOf(
+                Channel.BrowHeightL to 0.5f, Channel.BrowHeightR to 0.5f, Channel.EyeOpenL to 0.2f, Channel.EyeOpenR to 0.2f,
+                Channel.MouthCurve to 0.7f, Channel.MouthOpen to 0.3f,
+            ),
+            add = mapOf(Channel.HeadSquash to 0.2f),
+            shake = Channel.HeadTilt, shakeAmplitude = 0.08f, shakeFrequency = 3f,
+            followUp = Emotion.Happy, followUpIntensity = 0.5f, playful = true,
+        ),
+        ReactionDef(
+            "WelcomeBackLong", priority = 3, cooldown = 3f, attack = 0.1f, hold = 0.9f, release = 0.6f,
+            set = mapOf(
+                Channel.EyeSmileL to 1f, Channel.EyeSmileR to 1f, Channel.MouthCurve to 0.9f, Channel.MouthOpen to 0.55f,
+                Channel.BrowHeightL to 0.7f, Channel.BrowHeightR to 0.7f,
+            ),
+            add = mapOf(Channel.HeadSquash to 0.45f, Channel.HeadY to 0.05f, Channel.Sparkle to 0.8f, Channel.Blush to 0.5f),
+            shake = Channel.HeadY, shakeAmplitude = 0.03f, shakeFrequency = 3f,
+            followUp = Emotion.Happy, followUpIntensity = 0.7f, playful = true,
+        ),
+        ReactionDef(
+            "GoodMorning", priority = 2, cooldown = 60f, attack = 0.6f, hold = 1.4f, release = 0.8f,
+            set = mapOf(
+                Channel.MouthOpen to 0.8f, Channel.MouthRoundness to 0.5f, Channel.EyeSquint to 0.6f,
+                Channel.BrowHeightL to 0.6f, Channel.BrowHeightR to 0.6f,
+            ),
+            add = mapOf(Channel.HeadSquash to 0.45f, Channel.HeadY to 0.04f),
+            followUp = Emotion.Happy, followUpIntensity = 0.6f, playful = true,
+        ),
+        ReactionDef(
+            "LateNight", priority = 2, cooldown = 60f, attack = 0.3f, hold = 1.5f, release = 0.6f,
+            set = mapOf(
+                Channel.EyeOpenL to -0.35f, Channel.EyeOpenR to -0.1f, Channel.BrowHeightR to 0.7f, Channel.BrowHeightL to -0.2f,
+                Channel.MouthCurve to -0.1f, Channel.MouthAsymmetry to 0.4f, Channel.GazeX to 0.5f, Channel.GazeY to 0.1f,
+            ),
+            add = mapOf(Channel.HeadTilt to 0.1f),
+            playful = true,
         ),
     )
 }
