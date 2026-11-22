@@ -6,17 +6,20 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.drawscope.clipPath
 import face.core.rig.Channel
 import face.core.rig.FacePose
 
 internal class FaceFeatures(private val renderer: FaceRenderer) {
     private val path = Path()
+    private val innerPath = Path()
 
-    fun drawMouth(scope: DrawScope, pose: FacePose, style: FaceStyle, u: Float, cx: Float, cy: Float, accent: Color, line: Stroke) {
+    fun drawMouth(scope: DrawScope, pose: FacePose, style: FaceStyle, u: Float, cx: Float, cy: Float, accent: Color) {
         val round = pose[Channel.MouthRoundness]
         val open = pose[Channel.MouthOpen]
         val curve = pose[Channel.MouthCurve]
         val asym = pose[Channel.MouthAsymmetry]
+        val t = style.mouthThickness * u * pose[Channel.MouthThickness]
         val my = cy + style.mouthY * u - pose[Channel.MouthY] * MOUTH_Y_TRAVEL * u
         val w = style.mouthWidth * u * pose[Channel.MouthWidth] * (1f - ROUND_NARROWING * round)
 
@@ -25,37 +28,65 @@ internal class FaceFeatures(private val renderer: FaceRenderer) {
         val rightY = my + corner - asym * ASYM_HIGH * w
         val middle = curve * SMILE_DEPTH * w
         val ctrlX = w * (CTRL_SPREAD + ROUND_SPREAD * round * open)
+        val upper = my + middle * (1f - UPPER_FLATTEN * open) - open * round * OPEN_DEPTH * w * 0.5f
+        val lower = my + middle + open * OPEN_DEPTH * w * (1f + LOWER_ROUND_BONUS * round)
 
+        if (style.mouthStyle == MouthStyle.Stroke) {
+            drawStrokeMouth(scope, style, cx, w, leftY, rightY, upper, lower, ctrlX, open, accent, renderer.mouthStroke.get(t))
+            return
+        }
+        val half = t * 0.5f
+        path.rewind()
+        path.moveTo(cx - w, leftY - half)
+        path.cubicTo(cx - ctrlX, upper - half, cx + ctrlX, upper - half, cx + w, rightY - half)
+        path.quadraticTo(cx + w + t * CAP_BULGE, rightY, cx + w, rightY + half)
+        path.cubicTo(cx + ctrlX, lower + half, cx - ctrlX, lower + half, cx - w, leftY + half)
+        path.quadraticTo(cx - w - t * CAP_BULGE, leftY, cx - w, leftY - half)
+        path.close()
+        scope.drawPath(path, accent)
+        scope.drawPath(path, accent, style = renderer.outlineStroke.get(t * OUTLINE_SOFTEN))
+
+        val inner = ((open - INNER_MIN_OPEN) / INNER_FADE).coerceIn(0f, 1f)
+        if (inner <= 0f) return
+        val wi = w * INNER_SPAN
+        val innerTop = upper + half * 0.4f
+        val innerBottom = lower - half * 0.6f
+        innerPath.rewind()
+        innerPath.moveTo(cx - wi, leftY + half * 0.2f)
+        innerPath.cubicTo(cx - ctrlX * INNER_SPAN, innerTop, cx + ctrlX * INNER_SPAN, innerTop, cx + wi, rightY + half * 0.2f)
+        innerPath.cubicTo(cx + ctrlX * INNER_SPAN, innerBottom, cx - ctrlX * INNER_SPAN, innerBottom, cx - wi, leftY + half * 0.2f)
+        innerPath.close()
+        scope.drawPath(innerPath, style.pupil, alpha = inner)
+        if (open > TONGUE_MIN_OPEN) {
+            val depth = (innerBottom - innerTop) * TONGUE_DEPTH
+            scope.clipPath(innerPath) {
+                drawOval(TONGUE_COLOR, Offset(cx - wi * 0.55f, innerBottom - depth), Size(wi * 1.1f, depth * 2f), alpha = inner)
+            }
+        }
+    }
+
+    private fun drawStrokeMouth(
+        scope: DrawScope, style: FaceStyle, cx: Float, w: Float, leftY: Float, rightY: Float,
+        upper: Float, lower: Float, ctrlX: Float, open: Float, accent: Color, line: Stroke,
+    ) {
         path.rewind()
         path.moveTo(cx - w, leftY)
-        val upper = my + middle * (1f - UPPER_FLATTEN * open) - open * round * OPEN_DEPTH * w * 0.5f
         path.cubicTo(cx - ctrlX, upper, cx + ctrlX, upper, cx + w, rightY)
         if (open < MIN_OPEN) {
             scope.drawPath(path, accent, style = line)
             return
         }
-        val lower = my + middle + open * OPEN_DEPTH * w * (1f + LOWER_ROUND_BONUS * round)
         path.cubicTo(cx + ctrlX, lower, cx - ctrlX, lower, cx - w, leftY)
         path.close()
         scope.drawPath(path, style.pupil)
         scope.drawPath(path, accent, style = line)
     }
 
-    fun drawBrow(scope: DrawScope, pose: FacePose, style: FaceStyle, u: Float, cx: Float, cy: Float, side: Int, accent: Color, line: Stroke) {
-        val left = side < 0
-        val bx = renderer.eyeCenterX(pose, style, u, cx, side)
-        val halfWidth = renderer.eyeHalfWidth(pose, style, u, side) * BROW_SPAN
-        val by = renderer.eyeCenterY(pose, style, u, cy, side) - renderer.eyeBaseHalfHeight(pose, style, u, side) -
-            BROW_GAP * u - pose[if (left) Channel.BrowHeightL else Channel.BrowHeightR] * BROW_TRAVEL * u
-        val tilt = pose[if (left) Channel.BrowTiltL else Channel.BrowTiltR] * BROW_TILT * halfWidth
-        val curve = pose[if (left) Channel.BrowCurveL else Channel.BrowCurveR]
-        val innerX = bx - side * halfWidth
-        val outerX = bx + side * halfWidth
-
+    fun drawBrow(scope: DrawScope, style: FaceStyle, u: Float, brow: FloatArray, accent: Color) {
         path.rewind()
-        path.moveTo(innerX, by + tilt)
-        path.quadraticTo(bx, by - (BROW_ARCH + curve * BROW_CURVE) * halfWidth, outerX, by - tilt)
-        scope.drawPath(path, accent, style = line)
+        path.moveTo(brow[0], brow[1])
+        path.quadraticTo((brow[0] + brow[3]) * 0.5f, brow[2], brow[3], brow[4])
+        scope.drawPath(path, accent, style = renderer.browStroke.get(style.browThickness * u))
     }
 
     fun drawAccents(scope: DrawScope, pose: FacePose, style: FaceStyle, u: Float, cx: Float, cy: Float, accent: Color, line: Stroke) {
@@ -159,6 +190,7 @@ internal class FaceFeatures(private val renderer: FaceRenderer) {
         val SIDES = intArrayOf(-1, 1)
         val BLUSH_COLOR = Color(0xFFFF7A9C)
         val SWEAT_COLOR = Color(0xFF8FD3FF)
+        val TONGUE_COLOR = Color(0xFFFF6F91)
         const val MOUTH_Y_TRAVEL = 0.05f
         const val ROUND_NARROWING = 0.25f
         const val CORNER_LIFT = 0.25f
@@ -171,28 +203,29 @@ internal class FaceFeatures(private val renderer: FaceRenderer) {
         const val OPEN_DEPTH = 0.9f
         const val LOWER_ROUND_BONUS = 0.4f
         const val MIN_OPEN = 0.02f
-        const val BROW_SPAN = 0.8f
-        const val BROW_GAP = 0.045f
-        const val BROW_TRAVEL = 0.04f
-        const val BROW_TILT = 0.35f
-        const val BROW_ARCH = 0.15f
-        const val BROW_CURVE = 0.25f
-        const val BLUSH_WIDTH = 0.07f
-        const val BLUSH_HEIGHT = 0.028f
+        const val CAP_BULGE = 0.55f
+        const val OUTLINE_SOFTEN = 0.35f
+        const val INNER_MIN_OPEN = 0.08f
+        const val INNER_FADE = 0.2f
+        const val INNER_SPAN = 0.82f
+        const val TONGUE_MIN_OPEN = 0.3f
+        const val TONGUE_DEPTH = 0.32f
+        const val BLUSH_WIDTH = 0.1f
+        const val BLUSH_HEIGHT = 0.04f
         const val BLUSH_OUTSET = 0.55f
         const val BLUSH_DROP = 0.045f
         const val BLUSH_ALPHA = 0.6f
         const val SWEAT_OUTSET = 0.035f
-        const val SWEAT_SIZE = 0.05f
+        const val SWEAT_SIZE = 0.07f
         const val SPARKLE_OUTSET = 0.03f
-        const val SPARKLE_SIZE = 0.035f
-        const val QUESTION_SIZE = 0.032f
+        const val SPARKLE_SIZE = 0.05f
+        const val QUESTION_SIZE = 0.045f
         const val QUESTION_OUTSET = 0.05f
-        const val QUESTION_RISE = 0.09f
+        const val QUESTION_RISE = 0.14f
         const val SLEEP_OFFSET_X = 0.08f
-        const val SLEEP_OFFSET_Y = 0.2f
-        const val SLEEP_SIZE = 0.03f
-        const val THINK_RISE = 0.26f
-        const val THINK_DOT = 0.012f
+        const val SLEEP_OFFSET_Y = 0.3f
+        const val SLEEP_SIZE = 0.042f
+        const val THINK_RISE = 0.38f
+        const val THINK_DOT = 0.017f
     }
 }
