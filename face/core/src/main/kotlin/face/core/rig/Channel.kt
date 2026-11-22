@@ -74,6 +74,7 @@ public enum class Channel(
 
     public companion object {
         public val count: Int = entries.size
+        internal val all: Array<Channel> = entries.toTypedArray()
         private val byKey = entries.associateBy { it.key }
 
         public fun fromKey(key: String): Channel? = byKey[key]

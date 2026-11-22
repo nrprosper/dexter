@@ -5,7 +5,8 @@ import kotlin.math.sqrt
 public object Constraints {
     public fun apply(pose: FacePose) {
         val v = pose.values
-        for (channel in Channel.entries) v[channel.ordinal] = channel.clamp(v[channel.ordinal])
+        val all = Channel.all
+        for (i in all.indices) v[i] = all[i].clamp(v[i])
         limitGazeToUnitDisc(v)
         limitLowerLid(v, Channel.LowerLidRaiseL, Channel.EyeOpenL)
         limitLowerLid(v, Channel.LowerLidRaiseR, Channel.EyeOpenR)
