@@ -64,6 +64,7 @@ class LifeTest {
         assertTrue(engine.pose[Channel.SleepZ] > 0.5f, "Zzz should show")
 
         engine.interact()
+        engine.step(dt)
         assertEquals(Vigilance.Waking, engine.vigilance)
         run(engine, config.boredom.wakeDuration + 0.1f)
         assertEquals(Vigilance.Awake, engine.vigilance)
