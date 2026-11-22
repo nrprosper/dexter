@@ -1,0 +1,17 @@
+{
+  "format": 1,
+  "id": "happy",
+  "deltas": {
+    "eyeY": 0.05,
+    "upperLidCurveL": 0.3,
+    "upperLidCurveR": 0.3,
+    "lowerLidRaiseL": 0.6,
+    "lowerLidRaiseR": 0.6,
+    "pupilSize": 0.05,
+    "mouthCurve": 0.65,
+    "mouthWidth": 0.12,
+    "headScale": 0.03,
+    "headSquash": 0.08,
+    "blush": 0.55
+  }
+}

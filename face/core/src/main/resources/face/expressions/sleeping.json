@@ -1,0 +1,20 @@
+{
+  "format": 1,
+  "id": "sleeping",
+  "deltas": {
+    "eyeOpenL": -0.95,
+    "eyeOpenR": -0.95,
+    "highlightIntensity": -1.0,
+    "browHeightL": -0.3,
+    "browHeightR": -0.3,
+    "mouthCurve": -0.07,
+    "mouthOpen": 0.08,
+    "mouthWidth": -0.35,
+    "mouthRoundness": 0.5,
+    "headY": -0.2,
+    "headTilt": 0.2,
+    "headSquash": -0.1,
+    "sleepZ": 1.0,
+    "glow": -0.3
+  }
+}
