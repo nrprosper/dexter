@@ -31,4 +31,22 @@ class RngTest {
         }
         assertEquals(0.5, sum / 20_000, 0.01)
     }
+
+    @Test
+    fun gaussianHasUnitSpreadAndLogNormalKeepsItsMean() {
+        val rng = Rng(21)
+        var sum = 0.0
+        var squares = 0.0
+        var logSum = 0.0
+        val n = 50_000
+        repeat(n) {
+            val g = rng.nextGaussian().toDouble()
+            sum += g
+            squares += g * g
+            logSum += rng.nextLogNormal(4f, 0.45f)
+        }
+        assertEquals(0.0, sum / n, 0.02)
+        assertEquals(1.0, squares / n, 0.03)
+        assertEquals(4.0, logSum / n, 0.05)
+    }
 }
