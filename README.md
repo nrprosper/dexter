@@ -12,8 +12,9 @@ The current focus is the **Face Engine**, a self-contained set of modules that t
 | 1 | Static rig, bold renderer, three silhouettes, 14 expressions, playground | Done: Orb silhouette, mint accent |
 | 2 | Frame loop, springs, frame-rate independent motion | Done |
 | 3 | Life: blink, gaze, breathing, idle, boredom and sleep | Done (10-minute desk test is yours) |
-| 4 | Activity layer and public API | Next |
-| 5–8 | Emotion, speech, integration, polish | Planned |
+| 4 | Public API (`FaceController`), activities, inbox | Done |
+| 5 | Emotion blending, mood, reactions, personality | Next |
+| 6–8 | Speech, integration, polish | Planned |
 
 The app opens to the Orb face (mint) on a black, immersive screen. Left alone it blinks, glances around, breathes and does small idle things; after a while without interaction it gets drowsy and falls asleep. Tap it to wake it.
 
@@ -75,6 +76,28 @@ Each frame the engine builds the target through a fixed layer stack (neutral and
 - **Boredom:** drowsy after 90 s without interaction (heavier lids, slower blinks), asleep after 180 s ("Zzz", slow deep breathing). `interact()` (a tap) wakes it with a double blink, a stretch and a look at you.
 - **Breathing:** a barely visible bob and scale.
 
+## Driving the face (Phase 4)
+
+An orchestrator only needs `:face:api`. `FaceEngine` implements `FaceController`; the app creates it (`rememberFaceEngine()`), shows it with `FaceView(engine = engine)`, and passes the same object to the orchestrator as a `FaceController`.
+
+```kotlin
+face.setActivity(Activity.Listening)                 // Sleeping | Idle | Listening | Thinking | Speaking
+face.setUserVoiceLevel(level)                         // while listening: drives nods
+face.setEmotion(EmotionSignal(Emotion.Happy, 0.7f))
+face.react(FaceReaction.Realization)                  // queued, in order
+face.attachSpeech(track, SpeechStyle.Excited)         // the mouth samples the track each frame
+face.setActivity(Activity.Speaking)
+face.snapshot                                         // StateFlow<FaceSnapshot>
+```
+
+- **Thread-safe:** every call lands in an inbox that the frame loop drains first. State setters are latest-wins and **idempotent** (re-sending the same state changes nothing); reactions keep their order.
+- **Activities:**
+  - *Listening* leans in with bigger pupils, locked gaze, fewer blinks, and nods on your voice peaks.
+  - *Thinking* looks up and aside, then scans, then shows effort, then glances back apologetically if it takes long.
+  - *Speaking* keeps eyes on you with brief glances away, and the mouth follows the attached `SpeechTrack`.
+  - *Sleeping* sleeps until another activity is set. *Idle* keeps the boredom-to-sleep behaviour.
+- **Not yet:** emotions currently show as their expression scaled by intensity (the Director with hysteresis and mood is Phase 5); reactions are queued and recorded but have no animation yet (Phase 5); mouth shaping for real audio is Phase 6.
+
 ## Face Playground (debug builds)
 
 A debug install adds a second launcher icon, **Face Playground**.
@@ -84,6 +107,7 @@ A debug install adds a second launcher icon, **Face Playground**.
 - **Spam random targets** throws a random expression (often at a random place, size and tilt) every 0.12–0.45 s: the stress test for pops.
 - **Dynamics** has live f / ζ / r sliders per channel group, plus Reset.
 - The top-right overlay shows fps and the worst frame time of the last half second; bottom-left shows awake / drowsy / asleep.
+- **Orchestrator** drives the face only through `FaceController`: activity, emotion and intensity, reactions, a "User talking" voice simulator, and **Run scenario** (listen 3 s → think 4 s → speak 5 s → idle, run from a background thread).
 - **Life** turns the behaviours on or off, **×10** speeds up time, **Doze** sends it to sleep now, and the **Behaviour log** lists blinks, behaviours and state changes as they happen.
 - Tap the face for a full-screen view. In full screen, tap to step through the expressions; long-press to go back.
 - **Save** writes the pose as delta JSON and copies it to the clipboard. To copy saved poses into the repo:
