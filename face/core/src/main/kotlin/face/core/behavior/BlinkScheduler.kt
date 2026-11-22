@@ -6,7 +6,7 @@ import face.core.time.Rng
 import kotlin.math.max
 
 // Spontaneous blinks at log-normal intervals plus triggered ones; the shape is an authored curve applied after the springs.
-internal class BlinkScheduler(private val config: BlinkConfig, private val rng: Rng, private val ctx: LifeContext) {
+internal class BlinkScheduler(var config: BlinkConfig, private val rng: Rng, private val ctx: LifeContext) {
     private var untilNext = sampleInterval()
     private var t = -1f
     private var speed = 1f
@@ -49,7 +49,13 @@ internal class BlinkScheduler(private val config: BlinkConfig, private val rng: 
         return true
     }
 
+    // Mid-blink, the pair is queued after the current blink instead of restarting it (which would pop the lids).
     fun doubleBlink(reason: String) {
+        if (t >= 0f) {
+            pendingDouble = duration(speed) - t + config.doubleGap
+            ctx.emit(FaceEvent.DoubleBlink, reason)
+            return
+        }
         begin(1f, 1f)
         pendingDouble = duration(1f) + config.doubleGap
         ctx.emit(FaceEvent.DoubleBlink, reason)
