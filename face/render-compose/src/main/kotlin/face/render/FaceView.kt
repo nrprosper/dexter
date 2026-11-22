@@ -3,19 +3,28 @@ package face.render
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.State
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.tooling.preview.Preview
-
-private val Background = Color(0xFF050507)
-private val Placeholder = Color(0x33FFFFFF)
-private const val PLACEHOLDER_RADIUS_FRACTION = 0.015f
+import face.core.expression.ExpressionId
+import face.core.expression.ExpressionLibrary
+import face.core.rig.FacePose
 
 @Composable
-public fun FaceView(modifier: Modifier = Modifier) {
+public fun FaceView(modifier: Modifier = Modifier, style: FaceStyle = FaceStyle.Default) {
+    val pose = remember { FacePose().also { ExpressionLibrary.loadBundled().poseInto(it, ExpressionId.Neutral) } }
+    FaceCanvas(pose, style, rememberUpdatedState(0), modifier)
+}
+
+// Reads revision only in the draw phase, so pose edits redraw without recomposing.
+@Composable
+public fun FaceCanvas(pose: FacePose, style: FaceStyle, revision: State<Int>, modifier: Modifier = Modifier) {
+    val renderer = remember { FaceRenderer() }
     Canvas(modifier.fillMaxSize()) {
-        drawRect(Background)
-        drawCircle(Placeholder, radius = size.minDimension * PLACEHOLDER_RADIUS_FRACTION)
+        revision.value
+        renderer.draw(this, pose, style)
     }
 }
 
