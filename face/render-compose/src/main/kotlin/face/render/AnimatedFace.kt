@@ -24,8 +24,17 @@ public fun AnimatedFace(
     stats: FrameStats? = null,
     timeScale: Int = 1,
     touchable: Boolean = true,
+    intro: FaceIntro? = null,
 ) {
-    val renderer = remember { FaceRenderer() }
+    val renderer = remember {
+        FaceRenderer().apply {
+            if (intro != null) {
+                zoom = intro.startScale
+                zoomOffsetY = intro.startOffsetY
+            }
+        }
+    }
+    val introElapsed = remember { floatArrayOf(if (intro != null) 0f else -1f, 0f) }
     val currentStyle = rememberUpdatedState(style)
     val clock = remember(engine) { { engine.time.toFloat() } }
     val frame = remember { mutableIntStateOf(0) }
@@ -36,6 +45,19 @@ public fun AnimatedFace(
         val onFrame: (Long) -> Unit = { nanos ->
             val dt = ticker.tick(nanos)
             repeat(scale.value) { engine.step(dt) }
+            if (intro != null && introElapsed[0] >= 0f) {
+                introElapsed[1] += dt
+                if (intro.started || introElapsed[1] > INTRO_FALLBACK) introElapsed[0] += dt
+                val t = (introElapsed[0] / intro.seconds).coerceAtMost(1f)
+                val e = easeOutBack(t)
+                renderer.zoom = intro.startScale + (1f - intro.startScale) * e
+                renderer.zoomOffsetY = intro.startOffsetY * (1f - e)
+                if (t >= 1f) {
+                    renderer.zoom = 1f
+                    renderer.zoomOffsetY = 0f
+                    introElapsed[0] = -1f
+                }
+            }
             stats?.record(nanos)
             frame.intValue++
         }
@@ -83,4 +105,14 @@ public class FrameStats {
         worstNanos = 0L
         return worst / 1_000_000f
     }
+}
+
+private const val INTRO_FALLBACK = 1.5f
+
+// Grows a little past full size and settles back: a small playful overshoot.
+private fun easeOutBack(t: Float): Float {
+    val c1 = 1.1f
+    val c3 = c1 + 1f
+    val x = t - 1f
+    return 1f + c3 * x * x * x + c1 * x * x
 }
