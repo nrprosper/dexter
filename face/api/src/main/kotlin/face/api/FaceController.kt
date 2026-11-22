@@ -25,5 +25,8 @@ public interface FaceController {
     // The system volume panel is showing this level (0..1): the face makes room and watches it.
     public fun showVolume(level: Float)
 
+    // How the phone is tilted away from how it's usually held, -1..1 (x: right side down, y: top towards the user).
+    public fun setTilt(x: Float, y: Float)
+
     public val snapshot: StateFlow<FaceSnapshot>
 }
