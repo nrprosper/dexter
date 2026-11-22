@@ -1,0 +1,20 @@
+{
+  "format": 1,
+  "id": "determined",
+  "deltas": {
+    "eyeOpenL": -0.05,
+    "eyeOpenR": -0.05,
+    "pupilSize": -0.15,
+    "gazeY": 0.05,
+    "browHeightL": -1.0,
+    "browHeightR": -1.0,
+    "browTiltL": 0.7,
+    "browTiltR": 0.7,
+    "mouthCurve": -0.35,
+    "mouthWidth": -0.05,
+    "mouthThickness": 0.3,
+    "headY": -0.04,
+    "headScale": 0.04,
+    "headSquash": -0.12
+  }
+}

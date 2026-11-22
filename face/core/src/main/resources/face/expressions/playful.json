@@ -2,16 +2,18 @@
   "format": 1,
   "id": "playful",
   "deltas": {
-    "eyeOpenL": -0.45,
-    "upperLidTiltR": -0.1,
-    "lowerLidRaiseL": 0.5,
-    "lowerLidRaiseR": 0.3,
-    "gazeX": 0.3,
-    "mouthCurve": 0.5,
-    "mouthAsymmetry": 0.55,
-    "headTilt": 0.25,
-    "headSquash": 0.05,
-    "blush": 0.3,
-    "sparkle": 0.7
+    "eyeSmileL": 0.85,
+    "lowerLidRaiseR": 0.25,
+    "gazeX": 0.35,
+    "browHeightL": -0.1,
+    "browHeightR": 0.5,
+    "browTiltR": -0.2,
+    "mouthCurve": 0.55,
+    "mouthOpen": 0.2,
+    "mouthAsymmetry": 0.6,
+    "headTilt": 0.2,
+    "headSquash": 0.06,
+    "blush": 0.35,
+    "sparkle": 0.8
   }
 }

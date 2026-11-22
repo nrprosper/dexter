@@ -2,19 +2,21 @@
   "format": 1,
   "id": "sleeping",
   "deltas": {
-    "eyeOpenL": -0.95,
-    "eyeOpenR": -0.95,
+    "eyeOpenL": -0.97,
+    "eyeOpenR": -0.97,
     "highlightIntensity": -1.0,
-    "browHeightL": -0.3,
-    "browHeightR": -0.3,
-    "mouthCurve": -0.07,
-    "mouthOpen": 0.08,
-    "mouthWidth": -0.35,
-    "mouthRoundness": 0.5,
-    "headY": -0.2,
-    "headTilt": 0.2,
-    "headSquash": -0.1,
+    "browHeightL": -0.2,
+    "browHeightR": -0.2,
+    "browTiltL": -0.15,
+    "browTiltR": -0.15,
+    "mouthCurve": -0.12,
+    "mouthOpen": 0.12,
+    "mouthWidth": -0.05,
+    "mouthRoundness": 0.6,
+    "headY": -0.12,
+    "headTilt": 0.15,
+    "headSquash": -0.15,
     "sleepZ": 1.0,
-    "glow": -0.3
+    "glow": -0.35
   }
 }

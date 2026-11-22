@@ -36,7 +36,8 @@ public class Expression(
 }
 
 public enum class ExpressionId {
-    Neutral, Happy, Curious, Confused, Sad, Concerned, Playful, Surprised, Sleeping;
+    Neutral, Happy, Curious, Confused, Sad, Concerned, Playful, Surprised, Sleeping,
+    Joy, Laugh, Determined, Smug, Skeptical;
 
     public val key: String = name.lowercase()
 }

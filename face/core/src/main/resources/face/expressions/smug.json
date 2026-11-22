@@ -1,0 +1,21 @@
+{
+  "format": 1,
+  "id": "smug",
+  "deltas": {
+    "eyeOpenL": -0.45,
+    "eyeOpenR": -0.45,
+    "upperLidCurveL": 0.15,
+    "upperLidCurveR": 0.15,
+    "lowerLidRaiseL": 0.15,
+    "lowerLidRaiseR": 0.15,
+    "gazeX": 0.4,
+    "browHeightL": -0.15,
+    "browHeightR": 0.6,
+    "browTiltL": 0.3,
+    "mouthCurve": 0.35,
+    "mouthWidth": -0.05,
+    "mouthAsymmetry": 0.8,
+    "headY": 0.04,
+    "headTilt": -0.15
+  }
+}

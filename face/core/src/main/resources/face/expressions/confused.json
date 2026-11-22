@@ -2,18 +2,19 @@
   "format": 1,
   "id": "confused",
   "deltas": {
-    "eyeOpenL": -0.35,
+    "eyeOpenL": -0.3,
     "eyeOpenR": 0.1,
-    "upperLidTiltL": 0.35,
-    "eyeAsymmetry": 0.15,
-    "gazeX": -0.2,
-    "gazeY": 0.25,
-    "browHeightR": 0.5,
-    "browTiltL": 0.4,
-    "mouthCurve": -0.25,
-    "mouthWidth": -0.2,
-    "mouthAsymmetry": 0.5,
-    "headTilt": -0.35,
-    "question": 0.8
+    "eyeAsymmetry": 0.25,
+    "gazeX": -0.25,
+    "gazeY": 0.3,
+    "browHeightL": -0.35,
+    "browHeightR": 0.8,
+    "browTiltL": 0.5,
+    "browCurveR": 0.3,
+    "mouthCurve": -0.4,
+    "mouthWidth": -0.1,
+    "mouthAsymmetry": 0.6,
+    "headTilt": -0.25,
+    "question": 0.9
   }
 }
