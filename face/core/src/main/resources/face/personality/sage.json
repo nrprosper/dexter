@@ -1,0 +1,25 @@
+{
+  "format": 1,
+  "id": "sage",
+  "name": "Sage",
+  "mood": {
+    "baseline": { "curious": 0.1 },
+    "arousal": 0.3,
+    "driftHalfLife": 900
+  },
+  "expressiveness": 0.7,
+  "emotionGain": { "happy": 0.8, "sad": 0.5, "playful": 0.6, "concerned": 0.8 },
+  "director": {
+    "halfLife": 20, "minDwell": 2.5, "hysteresis": 0.25,
+    "inertia": 0.9, "transitionBeat": "neutral"
+  },
+  "motion": { "reactivity": 0.7, "bounciness": 0.1 },
+  "blink": { "meanInterval": 5.5, "spread": 0.35 },
+  "gaze": { "restlessness": 0.6 },
+  "idle": { "budgetPerMinute": 2,
+            "weights": { "tilt": 1, "hum": 1, "shift": 4, "bounce": 0 } },
+  "curiosity": 0.3,
+  "playfulness": 0.2,
+  "sleepiness": { "drowsyAfter": 150, "sleepAfter": 300 },
+  "quirks": ["doubleBlinkWhenUnsure"]
+}
