@@ -7,6 +7,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.repeatOnLifecycle
@@ -22,7 +23,11 @@ public fun AnimatedFace(
     style: FaceStyle = FaceStyle.Default,
     stats: FrameStats? = null,
     timeScale: Int = 1,
+    touchable: Boolean = true,
 ) {
+    val renderer = remember { FaceRenderer() }
+    val currentStyle = rememberUpdatedState(style)
+    val clock = remember(engine) { { engine.time.toFloat() } }
     val frame = remember { mutableIntStateOf(0) }
     val scale = rememberUpdatedState(timeScale)
     val lifecycle = LocalLifecycleOwner.current.lifecycle
@@ -45,7 +50,9 @@ public fun AnimatedFace(
             }
         }
     }
-    FaceCanvas(engine.pose, style, frame, modifier)
+    val touches = if (touchable) Modifier.faceTouches(engine, renderer) { currentStyle.value } else Modifier
+    val viewport = Modifier.onSizeChanged { engine.setViewport(it.width.toFloat(), it.height.toFloat()) }
+    FaceCanvas(engine.pose, style, frame, modifier.then(viewport).then(touches), renderer, clock)
 }
 
 public class FrameStats {

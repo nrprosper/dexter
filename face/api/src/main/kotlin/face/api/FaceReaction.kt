@@ -9,4 +9,11 @@ public sealed interface FaceReaction {
     public data object Oops : FaceReaction
     public data object Laugh : FaceReaction
     public data object Realization : FaceReaction
+
+    // Phone events: always answered playfully.
+    public data object PluggedIn : FaceReaction
+    public data object Unplugged : FaceReaction
+    public data object BatteryFull : FaceReaction
+    public data object HeadphonesIn : FaceReaction
+    public data object Shaken : FaceReaction
 }

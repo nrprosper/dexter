@@ -10,9 +10,10 @@ import kotlin.math.min
 internal class BoredomTracker(var config: BoredomConfig, private val ctx: LifeContext) {
     private var idleTime = 0f
     private var wakeElapsed = 0f
+    var tiredness = 1f
 
     fun update(dt: Float) {
-        idleTime += dt
+        idleTime += dt * tiredness
         if (ctx.vigilance == Vigilance.Waking) {
             wakeElapsed += dt
             ctx.sleepWeight = max(0f, ctx.sleepWeight - dt / WAKE_FADE)

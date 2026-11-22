@@ -36,6 +36,7 @@ android {
 
 dependencies {
     implementation(project(":face:render-compose"))
+    implementation(project(":face:senses-android"))
     debugImplementation(project(":face:playground"))
 
     implementation(platform(libs.androidx.compose.bom))

@@ -54,6 +54,18 @@ class FaceSnapshotTest {
     }
 
     @Test
+    fun lowBatteryRedAndDizzyLines() {
+        val red = FacePose().also { library.poseInto(it, ExpressionId.Concerned) }
+        red[Channel.WarnTint] = 1f
+        val dizzy = FacePose().also { library.poseInto(it, ExpressionId.Confused) }
+        dizzy[Channel.Dizzy] = 1f
+        dizzy[Channel.Question] = 0f
+        val revision = mutableIntStateOf(0)
+        paparazzi.snapshot("phone_lowBattery") { FaceCanvas(red, FaceStyle.Default, revision) }
+        paparazzi.snapshot("phone_dizzy") { FaceCanvas(dizzy, FaceStyle.Default, revision, time = { 0.3f }) }
+    }
+
+    @Test
     fun roamingPoses() {
         for ((name, x, y, scale, tilt) in ROAMS) {
             val pose = FacePose().also { library.poseInto(it, ExpressionId.Happy) }

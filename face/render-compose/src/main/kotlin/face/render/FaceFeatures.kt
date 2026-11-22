@@ -9,8 +9,11 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.clipPath
 import face.core.rig.Channel
 import face.core.rig.FacePose
+import kotlin.math.PI
+import kotlin.math.cos
 import kotlin.math.max
 import kotlin.math.min
+import kotlin.math.sin
 
 internal class FaceFeatures(private val renderer: FaceRenderer) {
     private val path = Path()
@@ -94,15 +97,18 @@ internal class FaceFeatures(private val renderer: FaceRenderer) {
         scope.drawPath(path, accent, style = renderer.browStroke.get(style.browThickness * u))
     }
 
-    fun drawAccents(scope: DrawScope, pose: FacePose, style: FaceStyle, u: Float, cx: Float, cy: Float, accent: Color, line: Stroke) {
+    fun drawAccents(
+        scope: DrawScope, pose: FacePose, style: FaceStyle, u: Float, cx: Float, cy: Float, accent: Color, line: Stroke, time: Float,
+    ) {
         drawBlush(scope, pose, style, u, cx, cy)
         drawSweat(scope, pose, style, u, cx, cy)
         drawSparkle(scope, pose, style, u, cx, cy)
-        if (pose[Channel.Question] <= 0f && pose[Channel.SleepZ] <= 0f && pose[Channel.ThinkDots] <= 0f) return
+        if (pose[Channel.Question] <= 0f && pose[Channel.SleepZ] <= 0f && pose[Channel.ThinkDots] <= 0f && pose[Channel.Dizzy] <= 0f) return
         measureFace(pose, style, u, cx, cy)
         drawQuestion(scope, pose, u, accent, line)
         drawSleepZ(scope, pose, u, accent, line)
         drawThinkDots(scope, pose, u, accent)
+        drawDizzy(scope, pose, u, accent, time)
     }
 
     // Fills faceTop/faceLeft/faceRight with the eyes' and brows' extent so glyph accents can sit outside it.
@@ -206,6 +212,36 @@ internal class FaceFeatures(private val renderer: FaceRenderer) {
         }
     }
 
+    // Little swirls and stars circling above the head; the back half of the orbit is dimmer.
+    private fun drawDizzy(scope: DrawScope, pose: FacePose, u: Float, accent: Color, time: Float) {
+        val dizzy = pose[Channel.Dizzy]
+        if (dizzy <= 0f) return
+        val centerX = (faceLeft + faceRight) * 0.5f
+        val centerY = faceTop - DIZZY_RISE * u
+        val rx = (faceRight - faceLeft) * DIZZY_ORBIT
+        val ry = rx * DIZZY_FLATTEN
+        val stroke = renderer.glyphStroke.get(DIZZY_STROKE * u)
+        val r = DIZZY_SIZE * u
+        for (k in 0 until DIZZY_ITEMS) {
+            val angle = 2f * PI.toFloat() * (time * DIZZY_SPEED + k.toFloat() / DIZZY_ITEMS)
+            val x = centerX + rx * cos(angle)
+            val y = centerY + ry * sin(angle)
+            val alpha = dizzy * (if (sin(angle) > 0f) 1f else DIZZY_BACK_ALPHA)
+            if (k % 2 == 0) {
+                scope.drawArc(accent, angle * 57.3f, 280f, false, Offset(x - r, y - r), Size(2f * r, 2f * r), alpha, stroke)
+            } else {
+                path.rewind()
+                path.moveTo(x, y - r)
+                path.quadraticTo(x, y, x + r, y)
+                path.quadraticTo(x, y, x, y + r)
+                path.quadraticTo(x, y, x - r, y)
+                path.quadraticTo(x, y, x, y - r)
+                path.close()
+                scope.drawPath(path, Color.White, alpha = alpha)
+            }
+        }
+    }
+
     private fun drawThinkDots(scope: DrawScope, pose: FacePose, u: Float, accent: Color) {
         val think = pose[Channel.ThinkDots]
         if (think <= 0f) return
@@ -219,7 +255,7 @@ internal class FaceFeatures(private val renderer: FaceRenderer) {
         }
     }
 
-    private companion object {
+    internal companion object {
         val SIDES = intArrayOf(-1, 1)
         val BLUSH_COLOR = Color(0xFFFF7A9C)
         val SWEAT_COLOR = Color(0xFF8FD3FF)
@@ -245,6 +281,14 @@ internal class FaceFeatures(private val renderer: FaceRenderer) {
         const val TONGUE_DEPTH = 0.32f
         const val BLUSH_WIDTH = 0.1f
         const val BLUSH_HEIGHT = 0.04f
+        const val DIZZY_RISE = 0.07f
+        const val DIZZY_ORBIT = 0.32f
+        const val DIZZY_FLATTEN = 0.28f
+        const val DIZZY_STROKE = 0.012f
+        const val DIZZY_SIZE = 0.022f
+        const val DIZZY_ITEMS = 4
+        const val DIZZY_SPEED = 0.8f
+        const val DIZZY_BACK_ALPHA = 0.45f
         const val BLUSH_OUTSET = 0.55f
         const val BLUSH_DROP = 0.045f
         const val BLUSH_ALPHA = 0.6f

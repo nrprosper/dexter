@@ -27,6 +27,7 @@ dependencies {
     implementation(project(":face:core"))
     implementation(project(":face:render-compose"))
     implementation(project(":face:speech-android"))
+    implementation(project(":face:senses-android"))
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.compose.foundation)
     implementation(libs.androidx.compose.ui)

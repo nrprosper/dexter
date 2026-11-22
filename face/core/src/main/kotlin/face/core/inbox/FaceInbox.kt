@@ -1,12 +1,14 @@
 package face.core.inbox
 
 import face.api.Activity
+import face.api.DeviceState
 import face.api.EmotionSignal
 import face.api.FaceReaction
 import face.api.Personality
 import face.api.PowerMode
 import face.api.SpeechStyle
 import face.api.SpeechTrack
+import face.core.senses.FaceTouch
 import java.util.concurrent.ConcurrentLinkedQueue
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicInteger
@@ -19,6 +21,10 @@ internal class FaceInbox {
     private val speech = AtomicReference<SpeechCommand?>(null)
     private val power = AtomicReference<PowerMode?>(null)
     private val personality = AtomicReference<Personality?>(null)
+    private val device = AtomicReference<DeviceState?>(null)
+    private val volumeBits = AtomicInteger(0)
+    private val volumeShown = AtomicBoolean(false)
+    private val touches = ConcurrentLinkedQueue<FaceTouch>()
     private val voiceBits = AtomicInteger(0f.toRawBits())
     private val poked = AtomicBoolean(false)
     private val reactions = ConcurrentLinkedQueue<FaceReaction>()
@@ -34,6 +40,17 @@ internal class FaceInbox {
     fun setPowerMode(value: PowerMode) = power.set(value)
 
     fun setPersonality(value: Personality) = personality.set(value)
+
+    fun setDeviceState(value: DeviceState) = device.set(value)
+
+    fun showVolume(level: Float) {
+        volumeBits.set(level.coerceIn(0f, 1f).toRawBits())
+        volumeShown.set(true)
+    }
+
+    fun touch(value: FaceTouch) {
+        touches.add(value)
+    }
 
     fun setVoiceLevel(level: Float) = voiceBits.set(level.coerceIn(0f, 1f).toRawBits())
 
@@ -52,6 +69,12 @@ internal class FaceInbox {
     fun takePowerMode(): PowerMode? = power.getAndSet(null)
 
     fun takePersonality(): Personality? = personality.getAndSet(null)
+
+    fun takeDeviceState(): DeviceState? = device.getAndSet(null)
+
+    fun takeVolume(): Float = if (volumeShown.getAndSet(false)) Float.fromBits(volumeBits.get()) else -1f
+
+    fun pollTouch(): FaceTouch? = touches.poll()
 
     fun takePoke(): Boolean = poked.getAndSet(false)
 
