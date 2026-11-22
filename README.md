@@ -15,6 +15,7 @@ The current focus is the **Face Engine**, a self-contained set of modules that t
 | 4 | Public API (`FaceController`), activities, inbox | Done |
 | 5 | Director, mood, reactions, personality, quirks | Done |
 | 5.5 | Phone senses: battery, charger, volume, headphones, shake, face-down, touch | Done |
+| 5.6 | More senses: tilt, heat, proximity, light, time of day, welcome back, saver, screenshot | Done |
 | 6 | Speech v1 (amplitude lip-sync) | Next |
 | 7–8 | Integration, polish | Planned |
 
@@ -118,6 +119,13 @@ The LLM chooses the feeling, the face chooses the performance.
 - **Charger in/out, battery full, headphones**: a zap, an "oh?", a contented stretch, a little head bob.
 - **Shake**: dizzy circling eyes with swirls orbiting above the head. **Face-down**: sleeps; picking it up wakes it with a peek.
 - **Volume keys**: the face scoots up-right, shrinks and watches the system slider level, then bounces back.
+- **Tilt**: the face lives inside the glass, sliding and looking a little downhill as you tilt the phone (relative to how you usually hold it).
+- **Heat**: warm gives a flush; hot, sweating, panting and a squint; critical, a melting droop.
+- **Hand over the screen**: eyes squeeze shut, then one peeks. **In a pocket**: curls up and sleeps.
+- **Room light**: dark makes it dimmer and sleepier; a sudden bright light makes it squint.
+- **Time of day**: a big good-morning stretch once a day, a "should you be sleeping?" look after midnight, sleepier at night.
+- **Welcome back** when you return to it (bigger after a long absence). **Battery saver**: heavy-lidded and slower.
+- **Screenshot** (Android 14+): it winks and poses for the photo.
 - **Touch** (hit-tested on the drawn face): poke an eye, tap a cheek (giggle), the mouth (boop) or forehead (bonk), long-press to pet, drag and the eyes follow, rapid taps escalate to a pout and a grumpy turn-away.
 
 ## Face Playground (debug builds)
