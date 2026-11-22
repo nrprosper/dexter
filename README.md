@@ -9,7 +9,7 @@ The current focus is the **Face Engine**, a self-contained set of modules that t
 | Phase | What | State |
 | --- | --- | --- |
 | 0 | Project skeleton: modules, version catalog, blank `FaceView` | Done |
-| 1 | Static rig, renderer, three silhouettes, playground | Done (silhouette and accent still to be chosen) |
+| 1 | Static rig, bold renderer, three silhouettes, 14 expressions, playground | Done (silhouette and accent still to be chosen) |
 | 2 | Time, frame loop and springs | Next |
 | 3–8 | Life, API, emotion, speech, integration, polish | Planned |
 
@@ -36,7 +36,7 @@ Dependencies flow `api ← core ← render-compose ← app`. `speech-android` de
 
 ## The rig
 
-The face is one flat `FloatArray` of 45 normalized channels (`face.core.rig.Channel`), grouped into eye shape, lids, eye placement, pupils, brows, mouth, head, accents and look. Vertical channels are positive-up, L/R mean screen-left and screen-right, and tilt is positive clockwise. `Constraints` clamps every channel, keeps the gaze inside the unit disc, and keeps the lower lid below the upper one.
+The face is one flat `FloatArray` of 49 normalized channels (`face.core.rig.Channel`), grouped into eye shape, lids, eye placement, pupils, brows, mouth, head, accents and look. Vertical channels are positive-up, L/R mean screen-left and screen-right, and tilt is positive clockwise. `Constraints` clamps every channel, keeps the gaze inside the unit disc, and keeps the lower lid below the upper one.
 
 Expressions are sparse deltas, stored as JSON (format v1) in `face/core/src/main/resources/face/expressions/`:
 
@@ -46,11 +46,20 @@ Expressions are sparse deltas, stored as JSON (format v1) in `face/core/src/main
 
 `neutral.json` is relative to the rig's rest values; every other expression is layered on top of neutral.
 
+Bundled expressions: neutral, happy, joy, laugh, curious, confused, sad, concerned, playful, surprised, sleeping, determined, smug and skeptical.
+
+What the renderer can do:
+- **Eyes** morph from their silhouette into arcs (`eyeSmile`, joy) or chevrons (`eyeSquint`, laughing), and get cut by tilted and curved lids.
+- **Brows** are on by default. A low brow presses the upper lid down, so angry and skeptical eyes come for free.
+- **Mouth** is a filled shape by default: it opens into a "D" with an inner mouth and tongue, and turns into an "o" or a grimace. The thin stroke style is still available.
+- **Head** can roam the whole screen (`headX`/`headY` ±1 reach the edges), scale 0.5×–1.8×, tilt ±45° and squash or stretch.
+- **Backdrop** is either pure dark (OLED) or a soft accent glow that follows the face.
+
 ## Face Playground (debug builds)
 
 A debug install adds a second launcher icon, **Face Playground**.
 
-- Switch silhouettes (Orb, Soft Block, Capsule), accent colour and brows at the top.
+- Switch silhouettes (Orb, Soft Block, Capsule), accent colour, brows, filled/stroke mouth and glow backdrop at the top. **Center** brings a roaming face back.
 - Tap an expression chip to load it, then drag any slider. Tap a channel's label to reset it.
 - Tap the face for a full-screen view. In full screen, tap to step through the expressions; long-press to go back.
 - **Save** writes the pose as delta JSON and copies it to the clipboard. To copy saved poses into the repo:
