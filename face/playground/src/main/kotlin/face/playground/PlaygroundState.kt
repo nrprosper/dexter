@@ -49,7 +49,9 @@ internal class PlaygroundState(private val library: ExpressionLibrary, saved: Li
             log.add(0, "%7.1fs  %s %s".format(time, event.name, detail))
             if (log.size > LOG_SIZE) log.removeAt(log.lastIndex)
         }
-        load(ExpressionId.Neutral)
+        // Start under the Director's control; sliders and expression chips switch to a manual pose when touched.
+        library.poseInto(edited, ExpressionId.Neutral)
+        for (c in Channel.entries) values[c.ordinal] = edited[c]
     }
 
     fun toggleLife(on: Boolean) {

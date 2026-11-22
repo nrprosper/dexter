@@ -23,14 +23,18 @@ internal class SecondOrderDynamics(private val count: Int) {
     private val damped = FloatArray(count)
 
     fun configure(index: Int, profile: DynamicsProfile) {
-        val w = 2f * PI.toFloat() * profile.frequency
-        val z = profile.damping
+        configure(index, profile.frequency, profile.damping, profile.response)
+    }
+
+    fun configure(index: Int, frequency: Float, damping: Float, response: Float) {
+        val w = 2f * PI.toFloat() * frequency
+        val z = damping
         omega[index] = w
         zeta[index] = z
         damped[index] = w * sqrt(abs(z * z - 1f))
-        k1[index] = z / (PI.toFloat() * profile.frequency)
+        k1[index] = z / (PI.toFloat() * frequency)
         k2[index] = 1f / (w * w)
-        k3[index] = profile.response * z / w
+        k3[index] = response * z / w
     }
 
     fun reset(values: FloatArray) {

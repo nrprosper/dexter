@@ -1,14 +1,25 @@
 package face.core
 
+import face.api.Activity
+import face.api.Emotion
+import face.api.EmotionSignal
+import face.api.FaceController
+import face.api.FaceReaction
+import face.api.FaceSnapshot
+import face.api.Personality
+import face.api.PowerMode
+import face.api.SpeechStyle
+import face.api.SpeechTrack
 import face.core.anim.DynamicsConfig
 import face.core.anim.DynamicsProfile
 import face.core.anim.LayerStack
 import face.core.anim.SecondOrderDynamics
+import face.core.behavior.ActivityController
 import face.core.behavior.ActivityLayer
-import face.core.behavior.BaseLayer
 import face.core.behavior.BlinkScheduler
 import face.core.behavior.BoredomTracker
 import face.core.behavior.BreathGenerator
+import face.core.behavior.FaceEvent
 import face.core.behavior.FaceEventListener
 import face.core.behavior.GazeController
 import face.core.behavior.GazeLayer
@@ -16,44 +27,101 @@ import face.core.behavior.IdleScheduler
 import face.core.behavior.LifeConfig
 import face.core.behavior.LifeContext
 import face.core.behavior.LifeLayer
+import face.core.behavior.Quirks
 import face.core.behavior.ReactionLayer
 import face.core.behavior.SpeechLayer
+import face.core.behavior.SpeechTrackLayer
 import face.core.behavior.Vigilance
+import face.core.director.Director
+import face.core.director.DirectorHooks
+import face.core.director.ReactionRouter
 import face.core.expression.ExpressionId
 import face.core.expression.ExpressionLibrary
+import face.core.inbox.FaceInbox
+import face.core.inbox.SpeechCommand
+import face.core.mood.EmotionLayer
+import face.core.mood.EmotionState
+import face.core.mood.MoodModel
+import face.core.personality.PersonalityMapper
 import face.core.rig.Channel
 import face.core.rig.ChannelGroup
 import face.core.rig.Constraints
 import face.core.rig.FacePose
 import face.core.time.FrameTicker
 import face.core.time.Rng
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlin.math.abs
+import kotlin.math.roundToInt
 
 // Layers decide where the face wants to be (target); springs decide how it gets there (pose); blink runs last.
+// API calls land in a thread-safe inbox that step() drains first, so the simulation stays single-threaded.
+// Explicit dynamics/life configs (tests, tools) win over the ones derived from the personality at construction.
 public class FaceEngine(
     private val library: ExpressionLibrary,
     rng: Rng,
-    dynamics: DynamicsConfig = DynamicsConfig.Default,
-    life: LifeConfig = LifeConfig.Default,
-) {
-    private val base = FacePose()
+    dynamics: DynamicsConfig? = null,
+    life: LifeConfig? = null,
+    personality: Personality = Personality(),
+) : FaceController {
+    private val inbox = FaceInbox()
+    private val neutral = FacePose()
+    private val manual = FacePose()
     private val target = FacePose()
     private val sleepPose = FacePose()
     private val springs = SecondOrderDynamics(Channel.count)
     private val ctx = LifeContext()
-    private val blink = BlinkScheduler(life.blink, rng, ctx)
-    private val gaze = GazeController(life.gaze, rng, ctx, blink)
-    private val idle = IdleScheduler(life.idle, rng, ctx, gaze)
-    private val boredom = BoredomTracker(life.boredom, ctx)
-    private val breath = BreathGenerator(life.breath, ctx)
+    private val startLife = life ?: PersonalityMapper.life(personality)
+    private val blink = BlinkScheduler(startLife.blink, rng, ctx)
+    private val gaze = GazeController(startLife.gaze, rng, ctx, blink)
+    private val idle = IdleScheduler(startLife.idle, rng, ctx, gaze)
+    private val boredom = BoredomTracker(startLife.boredom, ctx)
+    private val breath = BreathGenerator(startLife.breath, ctx)
+    private val wakeUp: () -> Unit = { wakeIfSleepy() }
+    private val activities = ActivityController(startLife.activity, rng, ctx, gaze, blink, boredom, wakeUp)
+    private val speech = SpeechTrackLayer()
+    private val emotionState = EmotionState()
+    private val mood = MoodModel()
+    private val quirks = Quirks(ctx, blink)
+    private val hooks = object : DirectorHooks {
+        override fun onAccepted(emotion: Emotion, strength: Float, confidence: Float, previousAmount: Float) {
+            quirks.onEmotion(emotion, strength, confidence, previousAmount)
+        }
+
+        override fun playSurpriseBeat() {
+            reactions.react(SURPRISE_BEAT)
+        }
+    }
+    private val director: Director = Director(ctx, emotionState, mood, hooks)
+    private val reactions: ReactionRouter = ReactionRouter(ctx, blink, director)
+    private val emotionLayer = EmotionLayer(library, neutral, emotionState, manual)
     private val gazeLayer = GazeLayer(gaze, ctx)
     private val lifeLayer = LifeLayer(idle, boredom, breath, sleepPose, ctx)
+    private val activityLayer = ActivityLayer(activities)
     private val stack = LayerStack(
-        arrayOf(BaseLayer(base), ActivityLayer(), gazeLayer, lifeLayer, SpeechLayer(), ReactionLayer()),
+        arrayOf(
+            emotionLayer, activityLayer, gazeLayer, lifeLayer,
+            SpeechLayer(speech), ReactionLayer(reactions, quirks, neutral),
+        ),
     )
+
+    private var lastSignal: EmotionSignal? = null
+    private var powerMode = PowerMode.Full
+    private var lastReaction: FaceReaction? = null
+    private var mixMode = false
+    private val mix = FloatArray(Emotion.entries.size)
+    private var mixArousal = 0.5f
+    private var appliedSpeed = -1f
+    private val state = MutableStateFlow(FaceSnapshot())
+
+    override val snapshot: StateFlow<FaceSnapshot> = state
 
     public val pose: FacePose = FacePose()
 
-    public var dynamics: DynamicsConfig = dynamics
+    public var personality: Personality = personality
+        private set
+
+    public var dynamics: DynamicsConfig = dynamics ?: PersonalityMapper.dynamics(personality)
         private set
 
     public var lifeEnabled: Boolean = true
@@ -61,6 +129,7 @@ public class FaceEngine(
             field = value
             gazeLayer.enabled = value
             lifeLayer.enabled = value
+            activityLayer.enabled = value
         }
 
     public var listener: FaceEventListener?
@@ -74,34 +143,66 @@ public class FaceEngine(
     public val time: Double get() = ctx.time
 
     init {
-        applyDynamics()
+        library.poseInto(neutral, ExpressionId.Neutral)
         library.poseInto(sleepPose, ExpressionId.Sleeping)
-        library.poseInto(base, ExpressionId.Neutral)
-        target.copyFrom(base)
+        manual.copyFrom(neutral)
+        applyPersonality(personality, initial = true)
+        director.startAtMood()
+        applyDynamics(speedFor(emotionState.arousal))
+        stack.apply(target)
+        Constraints.apply(target)
         snapToTarget()
     }
 
+    override fun setActivity(activity: Activity): Unit = inbox.setActivity(activity)
+
+    override fun setEmotion(signal: EmotionSignal): Unit = inbox.setEmotion(signal)
+
+    override fun react(event: FaceReaction): Unit = inbox.react(event)
+
+    override fun attachSpeech(track: SpeechTrack, style: SpeechStyle): Unit = inbox.attachSpeech(track, style)
+
+    override fun detachSpeech(): Unit = inbox.detachSpeech()
+
+    override fun setUserVoiceLevel(level: Float): Unit = inbox.setVoiceLevel(level)
+
+    override fun setPowerMode(mode: PowerMode): Unit = inbox.setPowerMode(mode)
+
+    override fun setPersonality(personality: Personality): Unit = inbox.setPersonality(personality)
+
+    // Any sign of the user (a tap): resets boredom, and wakes the face if it was sleepy. Thread-safe.
+    public fun interact() {
+        inbox.poke()
+    }
+
+    // Debug tools only, called on the frame thread: show an expression or a raw pose directly (bypasses the Director).
     public fun setExpression(id: ExpressionId, weight: Float = 1f) {
-        library.poseInto(base, id, weight)
+        library.poseInto(manual, id, weight)
+        emotionLayer.manualMode = true
         if (id == ExpressionId.Surprised) blink.suppress(SURPRISE_NO_BLINK) else blink.trigger()
     }
 
     public fun setTarget(source: FacePose) {
-        base.copyFrom(source)
-        Constraints.apply(base)
+        manual.copyFrom(source)
+        Constraints.apply(manual)
+        emotionLayer.manualMode = true
     }
 
     public fun copyTargetInto(out: FacePose) {
-        out.copyFrom(base)
+        out.copyFrom(manual)
     }
 
-    // Any sign of the user: resets boredom, and wakes the face with a double blink and a look if it was sleepy.
-    public fun interact() {
-        if (boredom.interact()) {
-            idle.cancel()
-            gaze.lookAtUser()
-            blink.doubleBlink(WAKE)
-        }
+    // Debug emotion mixer: shows these amounts directly instead of the Director's.
+    public fun setEmotionMix(amounts: FloatArray, arousal: Float) {
+        amounts.copyInto(mix)
+        mixArousal = arousal
+        mixMode = true
+        emotionLayer.manualMode = false
+    }
+
+    public fun useDirector() {
+        mixMode = false
+        emotionLayer.manualMode = false
     }
 
     public fun dozeOff() {
@@ -111,7 +212,22 @@ public class FaceEngine(
     public fun step(dt: Float) {
         val clamped = dt.coerceIn(0f, FrameTicker.MAX_DT)
         ctx.time += clamped
+        speech.nowNanos = (ctx.time * NANOS_PER_SECOND).toLong()
+        drainInbox()
+        director.speechEnergy = if (speech.speaking) speech.energy else -1f
+        if (mixMode) {
+            mix.copyInto(emotionState.amounts)
+            emotionState.arousal = mixArousal
+        } else {
+            director.update(clamped)
+        }
+        val speed = speedFor(emotionState.arousal)
+        if (abs(speed - appliedSpeed) > SPEED_EPSILON) applyDynamics(speed)
+        idle.rateScale = IDLE_RATE_BASE + IDLE_RATE_GAIN * emotionState.arousal
+        reactions.update(clamped)
+        quirks.update(clamped)
         if (lifeEnabled) {
+            activities.update(clamped, inbox.voiceLevel())
             boredom.update(clamped)
             blink.update(clamped)
             gaze.update(clamped)
@@ -124,6 +240,7 @@ public class FaceEngine(
         springs.y.copyInto(pose.values)
         if (lifeEnabled) blink.apply(pose)
         Constraints.apply(pose)
+        publishIfChanged()
     }
 
     public fun onResume() {
@@ -137,17 +254,119 @@ public class FaceEngine(
 
     public fun setProfile(group: ChannelGroup, profile: DynamicsProfile) {
         dynamics = dynamics.with(group, profile)
-        applyDynamics()
+        applyDynamics(speedFor(emotionState.arousal))
     }
 
     internal val blinkStats: BlinkScheduler get() = blink
 
-    private fun applyDynamics() {
-        for (channel in Channel.entries) springs.configure(channel.ordinal, dynamics[channel.group])
+    internal val emotionAmounts: FloatArray get() = emotionState.amounts
+
+    internal val reactionPlaying: Int get() = reactions.playing
+
+    private fun drainInbox() {
+        inbox.takePersonality()?.let { applyPersonality(it, initial = false) }
+        inbox.takeActivity()?.let { activities.set(it) }
+        inbox.takeEmotion()?.let { applyEmotion(it) }
+        inbox.takeSpeech()?.let {
+            when (it) {
+                is SpeechCommand.Attach -> speech.attach(it.track, it.style)
+                SpeechCommand.Detach -> speech.detach()
+            }
+        }
+        inbox.takePowerMode()?.let { powerMode = it }
+        if (inbox.takePoke() && activities.current != Activity.Sleeping) wakeIfSleepy()
+        while (true) {
+            val reaction = inbox.pollReaction() ?: break
+            lastReaction = reaction
+            reactions.react(reaction)
+        }
+    }
+
+    private fun applyEmotion(signal: EmotionSignal) {
+        mixMode = false
+        emotionLayer.manualMode = false
+        if (signal == lastSignal) return
+        lastSignal = signal
+        director.signal(signal.emotion, signal.intensity, signal.confidence)
+    }
+
+    private fun applyPersonality(p: Personality, initial: Boolean) {
+        personality = p
+        mood.configure(p.mood.baseline, p.mood.arousal, p.mood.driftHalfLife, reset = initial)
+        director.config = p.director
+        emotionLayer.configure(p)
+        quirks.configure(p.quirks)
+        if (!initial) {
+            val life = PersonalityMapper.life(p)
+            blink.config = life.blink
+            gaze.config = life.gaze
+            idle.configure(life.idle)
+            boredom.config = life.boredom
+            breath.config = life.breath
+            dynamics = PersonalityMapper.dynamics(p)
+            applyDynamics(speedFor(emotionState.arousal))
+            ctx.emit(FaceEvent.Personality, p.id)
+        }
+    }
+
+    private fun wakeIfSleepy() {
+        if (boredom.interact()) {
+            idle.cancel()
+            gaze.lookAtUser()
+            blink.doubleBlink(WAKE)
+            quirks.onWake()
+        }
+    }
+
+    private fun speedFor(arousal: Float): Float = SPEED_BASE + SPEED_GAIN * arousal
+
+    private fun applyDynamics(speed: Float) {
+        appliedSpeed = speed
+        val all = Channel.all
+        for (i in all.indices) {
+            val p = dynamics[all[i].group]
+            springs.configure(i, p.frequency * speed, p.damping, p.response)
+        }
+    }
+
+    private fun publishIfChanged() {
+        val current = state.value
+        val asleep = ctx.vigilance == Vigilance.Asleep
+        val emotion = director.currentEmotion
+        val intensity = director.currentStrength
+        val moodNow = mood.dominant()
+        val arousal = (emotionState.arousal * AROUSAL_STEPS).roundToInt() / AROUSAL_STEPS
+        if (current.activity == activities.current && current.emotion == emotion && current.intensity == intensity &&
+            current.speaking == speech.speaking && current.asleep == asleep && current.powerMode == powerMode &&
+            current.lastReaction === lastReaction && current.mood == moodNow && current.arousal == arousal &&
+            current.personality == personality.id
+        ) {
+            return
+        }
+        state.value = FaceSnapshot(
+            activity = activities.current,
+            emotion = emotion,
+            intensity = intensity,
+            speaking = speech.speaking,
+            asleep = asleep,
+            powerMode = powerMode,
+            lastReaction = lastReaction,
+            mood = moodNow,
+            arousal = arousal,
+            personality = personality.id,
+        )
     }
 
     private companion object {
         const val SURPRISE_NO_BLINK = 1.5f
         const val WAKE = "wake"
+        const val NANOS_PER_SECOND = 1e9
+        const val SPEED_BASE = 0.85f
+        const val SPEED_GAIN = 0.3f
+        const val SPEED_EPSILON = 0.01f
+        const val IDLE_RATE_BASE = 0.7f
+        const val IDLE_RATE_GAIN = 0.6f
+        const val AROUSAL_STEPS = 10f
+        val SURPRISE_BEAT: FaceReaction = FaceReaction.Surprise()
     }
 }

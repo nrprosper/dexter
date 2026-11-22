@@ -1,0 +1,25 @@
+{
+  "format": 1,
+  "id": "dexter",
+  "name": "Dexter",
+  "mood": {
+    "baseline": {},
+    "arousal": 0.5,
+    "driftHalfLife": 600
+  },
+  "expressiveness": 1.0,
+  "emotionGain": { "happy": 1.0, "sad": 0.7, "playful": 1.1 },
+  "director": {
+    "halfLife": 12, "minDwell": 1.2, "hysteresis": 0.15,
+    "inertia": 0.35, "transitionBeat": "surprise"
+  },
+  "motion": { "reactivity": 1.0, "bounciness": 0.6 },
+  "blink": { "meanInterval": 4.0, "spread": 0.45 },
+  "gaze": { "restlessness": 1.0 },
+  "idle": { "budgetPerMinute": 4,
+            "weights": { "tilt": 3, "hum": 2, "bounce": 2 } },
+  "curiosity": 0.6,
+  "playfulness": 0.6,
+  "sleepiness": { "drowsyAfter": 90, "sleepAfter": 180 },
+  "quirks": ["doubleBlinkWhenUnsure", "happyWobble", "oneEyePeek"]
+}

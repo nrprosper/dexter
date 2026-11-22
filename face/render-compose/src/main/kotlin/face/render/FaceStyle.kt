@@ -24,7 +24,7 @@ public data class FaceStyle(
     val showBrows: Boolean = true,
     val mouthStyle: MouthStyle = MouthStyle.Filled,
     val backdrop: Backdrop = Backdrop.Glow,
-    val accent: Color = Accents.Mint,
+    val accent: Color = Accents.Blue,
     val background: Color = Color(0xFF050507),
     val pupil: Color = Color(0xFF0B0B12),
 ) {
@@ -52,7 +52,7 @@ public data class FaceStyle(
 public object Accents {
     public val Amber: Color = Color(0xFFFFB547)
     public val Mint: Color = Color(0xFF5CF2C2)
-    public val Cyan: Color = Color(0xFF4CC9F0)
+    public val Blue: Color = Color(0xFF4CC9F0)
     public val Coral: Color = Color(0xFFFF6B6B)
-    public val Candidates: List<Color> = listOf(Amber, Mint, Cyan, Coral)
+    public val Candidates: List<Color> = listOf(Blue, Mint, Amber, Coral)
 }

@@ -9,13 +9,15 @@ The current focus is the **Face Engine**, a self-contained set of modules that t
 | Phase | What | State |
 | --- | --- | --- |
 | 0 | Project skeleton: modules, version catalog, blank `FaceView` | Done |
-| 1 | Static rig, bold renderer, three silhouettes, 14 expressions, playground | Done: Orb silhouette, mint accent |
+| 1 | Static rig, bold renderer, three silhouettes, 14 expressions, playground | Done: Orb silhouette, blue accent |
 | 2 | Frame loop, springs, frame-rate independent motion | Done |
 | 3 | Life: blink, gaze, breathing, idle, boredom and sleep | Done (10-minute desk test is yours) |
-| 4 | Activity layer and public API | Next |
-| 5–8 | Emotion, speech, integration, polish | Planned |
+| 4 | Public API (`FaceController`), activities, inbox | Done |
+| 5 | Director, mood, reactions, personality, quirks | Done |
+| 6 | Speech v1 (amplitude lip-sync) | Next |
+| 7–8 | Integration, polish | Planned |
 
-The app opens to the Orb face (mint) on a black, immersive screen. Left alone it blinks, glances around, breathes and does small idle things; after a while without interaction it gets drowsy and falls asleep. Tap it to wake it.
+The app opens to the Orb face (blue) on a black, immersive screen. Left alone it blinks, glances around, breathes and does small idle things; after a while without interaction it gets drowsy and falls asleep. Tap it to wake it.
 
 ## Requirements
 
@@ -75,6 +77,39 @@ Each frame the engine builds the target through a fixed layer stack (neutral and
 - **Boredom:** drowsy after 90 s without interaction (heavier lids, slower blinks), asleep after 180 s ("Zzz", slow deep breathing). `interact()` (a tap) wakes it with a double blink, a stretch and a look at you.
 - **Breathing:** a barely visible bob and scale.
 
+## Driving the face (Phase 4)
+
+An orchestrator only needs `:face:api`. `FaceEngine` implements `FaceController`; the app creates it (`rememberFaceEngine()`), shows it with `FaceView(engine = engine)`, and passes the same object to the orchestrator as a `FaceController`.
+
+```kotlin
+face.setActivity(Activity.Listening)                 // Sleeping | Idle | Listening | Thinking | Speaking
+face.setUserVoiceLevel(level)                         // while listening: drives nods
+face.setEmotion(EmotionSignal(Emotion.Happy, 0.7f))
+face.react(FaceReaction.Realization)                  // queued, in order
+face.attachSpeech(track, SpeechStyle.Excited)         // the mouth samples the track each frame
+face.setActivity(Activity.Speaking)
+face.snapshot                                         // StateFlow<FaceSnapshot>
+```
+
+- **Thread-safe:** every call lands in an inbox that the frame loop drains first. State setters are latest-wins and **idempotent** (re-sending the same state changes nothing); reactions keep their order.
+- **Activities:**
+  - *Listening* leans in with bigger pupils, locked gaze, fewer blinks, and nods on your voice peaks.
+  - *Thinking* looks up and aside, then scans, then shows effort, then glances back apologetically if it takes long.
+  - *Speaking* keeps eyes on you with brief glances away, and the mouth follows the attached `SpeechTrack`.
+  - *Sleeping* sleeps until another activity is set. *Idle* keeps the boredom-to-sleep behaviour.
+- **Not yet:** mouth shaping for real audio is Phase 6.
+
+## Character (Phase 5)
+
+The LLM chooses the feeling, the face chooses the performance.
+
+- **Director:** every `EmotionSignal` adds evidence for its emotion (scaled by confidence), and evidence fades over a few seconds. The face only switches when another emotion clearly out-evidences the current one (30% plus the hysteresis margin) and the minimum dwell has passed. A stray label from a noisy LLM loses; a repeated or confident one wins. Changes blend with inertia, big swings (sad → happy) get a transition beat (a surprise or a neutral pause), and expressions decay back to the **mood** with a half-life.
+- **Mood:** a slow temperament from the personality (Dexter rests neutral), nudged by what happens and drifting back.
+- **Arousal:** energy from the emotion and speech style; it speeds up springs and idle behaviour ("excited" is just happy with high arousal).
+- **Reactions:** Surprise, Startle, Delight, Acknowledge, Oops, Laugh and Realization play as attack/hold/release envelopes. A higher priority interrupts a lower one, each has a cooldown (five surprises in a row give one pop), and several hand over to a follow-up emotion.
+- **Quirks:** a double blink when unsure, a happy head wobble, and a one-eye peek when woken.
+- **Personality:** JSON (format 1) in `face/core/src/main/resources/face/personality/`: **Dexter** (default: bouncy, curious, expressive) and **Sage** (calm, composed, slow). Apply one at runtime with `setPersonality`.
+
 ## Face Playground (debug builds)
 
 A debug install adds a second launcher icon, **Face Playground**.
@@ -84,6 +119,15 @@ A debug install adds a second launcher icon, **Face Playground**.
 - **Spam random targets** throws a random expression (often at a random place, size and tilt) every 0.12–0.45 s: the stress test for pops.
 - **Dynamics** has live f / ζ / r sliders per channel group, plus Reset.
 - The top-right overlay shows fps and the worst frame time of the last half second; bottom-left shows awake / drowsy / asleep.
+- **Orchestrator** drives the face only through `FaceController`: activity, emotion and intensity, reactions, a "User talking" voice simulator, and **Run scenario** (listen 3 s → think 4 s → speak 5 s → idle, run from a background thread).
+- **Personality** switches Dexter and Sage. The active preset is an editable file that hot-reloads within a second:
+  ```bash
+  adb pull /sdcard/Android/data/com.vlmis.dexter/files/personality/dexter.json
+  # edit it, then
+  adb push dexter.json /sdcard/Android/data/com.vlmis.dexter/files/personality/dexter.json
+  ```
+- **Noisy LLM** (in the orchestrator panel) sends a random emotion every 0.8–3 s, mostly "happy", to show the Director keeping the face calm. Reaction buttons now animate.
+- **Emotion mixer** sets emotion amounts and arousal directly (**Use mix**); **Director** hands control back.
 - **Life** turns the behaviours on or off, **×10** speeds up time, **Doze** sends it to sleep now, and the **Behaviour log** lists blinks, behaviours and state changes as they happen.
 - Tap the face for a full-screen view. In full screen, tap to step through the expressions; long-press to go back.
 - **Save** writes the pose as delta JSON and copies it to the clipboard. To copy saved poses into the repo:

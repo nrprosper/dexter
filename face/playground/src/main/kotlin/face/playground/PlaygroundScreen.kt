@@ -173,6 +173,9 @@ private fun Controls(state: PlaygroundState, onSave: (String) -> String, modifie
                 Toggle("Spam random targets", state.spamming) { state.spamming = it }
             }
         }
+        item { PersonalityPanel(state.engine) }
+        item { OrchestratorPanel(state.engine) }
+        item { EmotionMixerPanel(state.engine) }
         item { BehaviorLog(state.log) }
         item { DynamicsPanel(state) }
         for (group in Channel.entries.groupBy { it.group }) {

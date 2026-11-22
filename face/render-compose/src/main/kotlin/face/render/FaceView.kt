@@ -15,8 +15,15 @@ import face.core.rig.FacePose
 import face.core.time.Rng
 
 @Composable
-public fun FaceView(modifier: Modifier = Modifier, style: FaceStyle = FaceStyle.Default) {
-    val engine = remember { FaceEngine(ExpressionLibrary.loadBundled(), Rng(System.nanoTime())) }
+public fun rememberFaceEngine(): FaceEngine = remember { FaceEngine(ExpressionLibrary.loadBundled(), Rng(System.nanoTime())) }
+
+// The engine is also the FaceController: hand the same object to the orchestrator.
+@Composable
+public fun FaceView(
+    modifier: Modifier = Modifier,
+    style: FaceStyle = FaceStyle.Default,
+    engine: FaceEngine = rememberFaceEngine(),
+) {
     AnimatedFace(engine, modifier.pointerInput(engine) { detectTapGestures { engine.interact() } }, style)
 }
 

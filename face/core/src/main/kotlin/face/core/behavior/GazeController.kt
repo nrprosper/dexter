@@ -11,7 +11,7 @@ import kotlin.math.sqrt
 
 // Gaze is a target point: mostly on the user, with occasional glances away; pupils jump there, the head follows slowly.
 internal class GazeController(
-    private val config: GazeConfig,
+    var config: GazeConfig,
     private val rng: Rng,
     private val ctx: LifeContext,
     private val blink: BlinkScheduler,
@@ -27,6 +27,11 @@ internal class GazeController(
     private var sweepStep = -1
     private var sweepLeft = 0f
     private var sweepSign = 1f
+    private var holding = false
+    private var holdX = 0f
+    private var holdY = 0f
+
+    var policy: GazePolicy = GazePolicy.Default
 
     fun update(dt: Float) {
         driftX = noiseX.next(dt)
@@ -38,6 +43,7 @@ internal class GazeController(
             sweepStep = -1
             return
         }
+        if (holding) return
         if (sweepStep >= 0) {
             sweepLeft -= dt
             if (sweepLeft <= 0f) advanceSweep()
@@ -46,7 +52,7 @@ internal class GazeController(
         fixationLeft -= dt * (1f - DROWSY_SLOWDOWN * ctx.drowsiness)
         if (fixationLeft <= 0f) {
             nextFixation()
-            fixationLeft = sampleFixation()
+            fixationLeft = sampleFixation() * (if (away) policy.awayHold else policy.fixationScale)
         }
     }
 
@@ -54,6 +60,22 @@ internal class GazeController(
         sweepSign = if (rng.nextFloat() < 0.5f) -1f else 1f
         sweepStep = 0
         advanceSweep()
+    }
+
+    // An activity pins the gaze somewhere (thinking looks up and aside); re-holding the same point is free.
+    fun holdAt(x: Float, y: Float) {
+        if (holding && x == holdX && y == holdY) return
+        holding = true
+        holdX = x
+        holdY = y
+        sweepStep = -1
+        moveTo(x, y)
+    }
+
+    fun release() {
+        if (!holding) return
+        holding = false
+        lookAtUser()
     }
 
     fun lookAtUser() {
@@ -75,14 +97,15 @@ internal class GazeController(
 
     private fun nextFixation() {
         val drowsy = ctx.drowsiness
-        if (away || rng.nextFloat() >= config.awayChance * (1f - DROWSY_SLOWDOWN * drowsy)) {
+        val p = policy
+        if (away || rng.nextFloat() >= config.awayChance * p.awayScale * (1f - DROWSY_SLOWDOWN * drowsy)) {
             away = false
-            val r = config.refixRadius
+            val r = config.refixRadius * p.refixScale
             moveTo(rng.nextFloat(-r, r), rng.nextFloat(-r, r))
         } else {
             away = true
             val angle = rng.nextFloat(0f, 2f * PI.toFloat())
-            val radius = rng.nextFloat(config.awayMin, config.awayMax) * (1f - DROWSY_SLOWDOWN * drowsy)
+            val radius = rng.nextFloat(config.awayMin, config.awayMax) * p.awayReach * (1f - DROWSY_SLOWDOWN * drowsy)
             moveTo(cos(angle) * radius, sin(angle) * radius * VERTICAL_SQUEEZE)
         }
     }
