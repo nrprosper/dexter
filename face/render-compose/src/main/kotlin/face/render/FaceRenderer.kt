@@ -12,9 +12,14 @@ import androidx.compose.ui.graphics.drawscope.clipPath
 import androidx.compose.ui.graphics.drawscope.withTransform
 import face.core.rig.Channel
 import face.core.rig.FacePose
+import face.core.senses.FacePart
+import kotlin.math.PI
+import kotlin.math.abs
+import kotlin.math.cos
 import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.pow
+import kotlin.math.sin
 
 // Draws a FacePose with no per-frame allocation: paths are rewound, brushes and strokes cached by key.
 public class FaceRenderer {
@@ -37,12 +42,18 @@ public class FaceRenderer {
 
     internal val features = FaceFeatures(this)
 
-    public fun draw(scope: DrawScope, pose: FacePose, style: FaceStyle): Unit = with(scope) {
+    private var lastWidth = 0f
+    private var lastHeight = 0f
+
+    // time (seconds) only drives looping decorations such as the dizzy lines.
+    public fun draw(scope: DrawScope, pose: FacePose, style: FaceStyle, time: Float = 0f): Unit = with(scope) {
+        lastWidth = size.width
+        lastHeight = size.height
         drawRect(style.background)
         val u = min(size.width, size.height)
         val cx = size.width / 2f + pose[Channel.HeadX] * HEAD_TRAVEL * size.width
         val cy = size.height / 2f - pose[Channel.HeadY] * HEAD_TRAVEL * size.height
-        val accent = tinted(style.accent, pose[Channel.TintShift])
+        val accent = warned(tinted(style.accent, pose[Channel.TintShift]), pose[Channel.WarnTint])
         val squash = pose[Channel.HeadSquash] * SQUASH_AMOUNT
         val scale = pose[Channel.HeadScale]
 
@@ -59,7 +70,7 @@ public class FaceRenderer {
             for (side in SIDES) drawEye(pose, style, u, cx, cy, side, accent)
             features.drawMouth(this, pose, style, u, cx, cy, accent)
             if (style.showBrows) for (side in SIDES) features.drawBrow(this, style, u, if (side < 0) browLeft else browRight, accent)
-            features.drawAccents(this, pose, style, u, cx, cy, accent, mouthStroke.get(style.mouthThickness * u))
+            features.drawAccents(this, pose, style, u, cx, cy, accent, mouthStroke.get(style.mouthThickness * u), time)
         }
     }
 
@@ -239,6 +250,62 @@ public class FaceRenderer {
         }
     }
 
+    // Low battery: the whole face fades towards the red accent.
+    private fun warned(color: Color, warn: Float): Color {
+        if (warn <= 0f) return color
+        val w = warn.coerceAtMost(1f)
+        return Color(
+            color.red + (WARN_RED.red - color.red) * w,
+            color.green + (WARN_RED.green - color.green) * w,
+            color.blue + (WARN_RED.blue - color.blue) * w,
+            color.alpha,
+        )
+    }
+
+    // Maps a touch on the canvas to the face part under it, undoing the head transform.
+    public fun hitTest(x: Float, y: Float, pose: FacePose, style: FaceStyle): FaceHit =
+        hitTest(x, y, pose, style, lastWidth, lastHeight)
+
+    internal fun hitTest(x: Float, y: Float, pose: FacePose, style: FaceStyle, w: Float, h: Float): FaceHit {
+        if (w <= 0f || h <= 0f) return FaceHit(FacePart.Outside, 0f, 0f)
+        val u = min(w, h)
+        val cx = w / 2f + pose[Channel.HeadX] * HEAD_TRAVEL * w
+        val cy = h / 2f - pose[Channel.HeadY] * HEAD_TRAVEL * h
+        val lookX = ((x - cx) / (LOOK_SPAN * u)).coerceIn(-1f, 1f)
+        val lookY = (-(y - cy) / (LOOK_SPAN * u)).coerceIn(-1f, 1f)
+        val angle = -pose[Channel.HeadTilt] * MAX_TILT_DEGREES * (PI / 180.0).toFloat()
+        val squash = pose[Channel.HeadSquash] * SQUASH_AMOUNT
+        val scale = pose[Channel.HeadScale]
+        val dx = x - cx
+        val dy = y - cy
+        val px = cx + (dx * cos(angle) - dy * sin(angle)) / (scale * (1f - squash))
+        val py = cy + (dx * sin(angle) + dy * cos(angle)) / (scale * (1f + squash))
+        var eyeTop = Float.MAX_VALUE
+        for (side in SIDES) {
+            val ex = eyeCenterX(pose, style, u, cx, side)
+            val ey = eyeCenterY(pose, style, u, cy, side)
+            val a = eyeHalfWidth(pose, style, u, side)
+            val b = eyeBaseHalfHeight(pose, style, u, side) * max(1f, pose[if (side < 0) Channel.EyeOpenL else Channel.EyeOpenR])
+            eyeTop = min(eyeTop, ey - b)
+            val nx = (px - ex) / a
+            val ny = (py - ey) / b
+            if (nx * nx + ny * ny <= EYE_HIT) return FaceHit(if (side < 0) FacePart.LeftEye else FacePart.RightEye, lookX, lookY)
+            val bx = ex + side * a * FaceFeatures.BLUSH_OUTSET
+            val by = ey + eyeBaseHalfHeight(pose, style, u, side) + FaceFeatures.BLUSH_DROP * u
+            val r = CHEEK_HIT * u
+            if ((px - bx) * (px - bx) + (py - by) * (py - by) <= r * r) return FaceHit(FacePart.Cheek, lookX, lookY)
+        }
+        val my = cy + style.mouthY * u - pose[Channel.MouthY] * FaceFeatures.MOUTH_Y_TRAVEL * u
+        val mw = style.mouthWidth * u * pose[Channel.MouthWidth] * MOUTH_HIT_WIDTH
+        if (abs(px - cx) <= mw && abs(py - my) <= MOUTH_HIT_HEIGHT * u) return FaceHit(FacePart.Mouth, lookX, lookY)
+        val halfFace = (style.eyeSpacing + style.eyeWidth * FACE_HIT_WIDTH) * u
+        if (abs(px - cx) <= halfFace && py < eyeTop && py > eyeTop - FOREHEAD_HIT * u) return FaceHit(FacePart.Forehead, lookX, lookY)
+        if (abs(px - cx) <= halfFace && py >= eyeTop - FOREHEAD_HIT * u && py <= my + CHIN_HIT * u) {
+            return FaceHit(FacePart.Face, lookX, lookY)
+        }
+        return FaceHit(FacePart.Outside, lookX, lookY)
+    }
+
     private fun tinted(color: Color, shift: Float): Color {
         if (shift <= 0f) return color
         val r = color.red
@@ -259,6 +326,15 @@ public class FaceRenderer {
 
     private companion object {
         val SIDES = intArrayOf(-1, 1)
+        val WARN_RED = Accents.Coral
+        const val LOOK_SPAN = 0.45f
+        const val EYE_HIT = 1.3f
+        const val CHEEK_HIT = 0.07f
+        const val MOUTH_HIT_WIDTH = 1.3f
+        const val MOUTH_HIT_HEIGHT = 0.07f
+        const val FACE_HIT_WIDTH = 1.4f
+        const val FOREHEAD_HIT = 0.18f
+        const val CHIN_HIT = 0.12f
         const val TWO_PI = (2.0 * Math.PI).toFloat()
         const val EYE_SAMPLES = 64
         const val LID_SAMPLES = 25
