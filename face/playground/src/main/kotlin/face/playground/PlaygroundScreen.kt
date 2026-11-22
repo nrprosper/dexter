@@ -28,6 +28,7 @@ import androidx.compose.material3.Slider
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -41,10 +42,13 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import face.core.expression.ExpressionId
 import face.core.rig.Channel
+import face.core.time.Rng
+import kotlinx.coroutines.delay
 import face.render.Accents
 import face.render.Backdrop
-import face.render.FaceCanvas
+import face.render.AnimatedFace
 import face.render.FaceStyle
+import face.render.FrameStats
 import face.render.MouthStyle
 
 @Composable
@@ -56,19 +60,28 @@ internal fun PlaygroundScreen(state: PlaygroundState, onSave: (String) -> String
             onLongPress = { fullscreen = false },
         )
     }
+    LaunchedEffect(state.spamming) {
+        if (!state.spamming) return@LaunchedEffect
+        val rng = Rng(System.nanoTime())
+        while (true) {
+            delay((rng.nextFloat(SPAM_MIN_SECONDS, SPAM_MAX_SECONDS) * 1000f).toLong())
+            state.randomTarget(rng)
+        }
+    }
     if (fullscreen) {
-        FaceCanvas(state.display, state.style, state.revision, Modifier.fillMaxSize().then(faceGestures))
+        AnimatedFace(state.engine, Modifier.fillMaxSize().then(faceGestures), state.style, state.stats)
         return
     }
     Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
         Box(Modifier.fillMaxWidth().weight(0.42f)) {
-            FaceCanvas(state.display, state.style, state.revision, Modifier.fillMaxSize().then(faceGestures))
+            AnimatedFace(state.engine, Modifier.fillMaxSize().then(faceGestures), state.style, state.stats)
             Text(
                 state.selected ?: "custom",
                 Modifier.align(Alignment.TopStart).padding(12.dp),
                 color = Color.White.copy(alpha = 0.5f),
                 style = MaterialTheme.typography.labelMedium,
             )
+            FrameOverlay(state.stats, Modifier.align(Alignment.TopEnd).padding(12.dp))
         }
         Controls(state, onSave, Modifier.weight(0.58f))
     }
@@ -139,6 +152,12 @@ private fun Controls(state: PlaygroundState, onSave: (String) -> String, modifie
             }
             if (status.isNotEmpty()) Text(status, style = MaterialTheme.typography.bodySmall)
         }
+        item {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Toggle("Spam random targets", state.spamming) { state.spamming = it }
+            }
+        }
+        item { DynamicsPanel(state) }
         for (group in Channel.entries.groupBy { it.group }) {
             item(key = group.key.name) {
                 Text(group.key.name, Modifier.padding(top = 8.dp), style = MaterialTheme.typography.titleSmall)
@@ -170,6 +189,29 @@ private fun ChannelSlider(state: PlaygroundState, channel: Channel) {
         Slider(value, { state.set(channel, it) }, Modifier.weight(1f), valueRange = channel.min..channel.max)
     }
 }
+
+// Polls the frame stats twice a second, so the overlay itself never recomposes per frame.
+@Composable
+private fun FrameOverlay(stats: FrameStats, modifier: Modifier) {
+    var text by remember { mutableStateOf("") }
+    LaunchedEffect(stats) {
+        var lastFrames = stats.frames
+        var lastNanos = System.nanoTime()
+        while (true) {
+            delay(OVERLAY_PERIOD_MILLIS)
+            val now = System.nanoTime()
+            val fps = (stats.frames - lastFrames) * 1e9f / (now - lastNanos)
+            text = "%.0f fps · worst %.1f ms".format(fps, stats.takeWorstFrameMillis())
+            lastFrames = stats.frames
+            lastNanos = now
+        }
+    }
+    Text(text, modifier, color = Color.White.copy(alpha = 0.6f), fontFamily = FontFamily.Monospace, style = MaterialTheme.typography.labelSmall)
+}
+
+private const val SPAM_MIN_SECONDS = 0.12f
+private const val SPAM_MAX_SECONDS = 0.45f
+private const val OVERLAY_PERIOD_MILLIS = 500L
 
 private fun nextExpression(current: String?): ExpressionId {
     val index = ExpressionId.entries.indexOfFirst { it.key == current }

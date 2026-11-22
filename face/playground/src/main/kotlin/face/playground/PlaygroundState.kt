@@ -5,23 +5,33 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import face.core.FaceEngine
+import face.core.anim.DynamicsConfig
+import face.core.anim.DynamicsProfile
 import face.core.expression.Expression
 import face.core.expression.ExpressionId
 import face.core.expression.ExpressionLibrary
 import face.core.rig.Channel
+import face.core.rig.ChannelGroup
 import face.core.rig.Constraints
 import face.core.rig.FacePose
+import face.core.time.Rng
 import face.render.FaceStyle
+import face.render.FrameStats
 
+// Sliders and presets edit the engine's target; the springs animate the visible face towards it.
 internal class PlaygroundState(private val library: ExpressionLibrary, saved: List<Expression>) {
     private val edited = FacePose()
-    val display = FacePose()
-    val revision = mutableIntStateOf(0)
+    val engine = FaceEngine(library)
+    val stats = FrameStats()
     val values = mutableStateListOf<Float>()
     val savedPoses = mutableStateListOf<Expression>().apply { addAll(saved) }
 
     var style by mutableStateOf(FaceStyle.Default)
     var selected by mutableStateOf<String?>(null)
+    var spamming by mutableStateOf(false)
+    var tunedGroup by mutableStateOf(ChannelGroup.Head)
+    val dynamicsRevision = mutableIntStateOf(0)
 
     init {
         repeat(Channel.count) { values.add(0f) }
@@ -54,6 +64,32 @@ internal class PlaygroundState(private val library: ExpressionLibrary, saved: Li
         publish()
     }
 
+    // A random expression, often thrown somewhere else on screen at a random size and tilt.
+    fun randomTarget(rng: Rng) {
+        val id = ExpressionId.entries[rng.nextInt(ExpressionId.entries.size)]
+        library.poseInto(edited, id)
+        if (rng.nextInt(2) == 0) {
+            edited[Channel.HeadX] = rng.nextFloat(-0.6f, 0.6f)
+            edited[Channel.HeadY] = rng.nextFloat(-0.6f, 0.6f)
+            edited[Channel.HeadScale] = rng.nextFloat(0.6f, 1.4f)
+            edited[Channel.HeadTilt] = rng.nextFloat(-0.5f, 0.5f)
+        }
+        selected = id.key
+        publish()
+    }
+
+    fun profile(group: ChannelGroup): DynamicsProfile = engine.dynamics[group]
+
+    fun setProfile(group: ChannelGroup, profile: DynamicsProfile) {
+        engine.setProfile(group, profile)
+        dynamicsRevision.intValue++
+    }
+
+    fun resetDynamics() {
+        for (group in ChannelGroup.entries) engine.setProfile(group, DynamicsConfig.Default[group])
+        dynamicsRevision.intValue++
+    }
+
     // Neutral is saved relative to the rig rest pose; everything else relative to neutral.
     fun export(name: String): Expression {
         val base = FacePose()
@@ -68,10 +104,8 @@ internal class PlaygroundState(private val library: ExpressionLibrary, saved: Li
     }
 
     private fun publish() {
-        display.copyFrom(edited)
-        Constraints.apply(display)
+        engine.setTarget(edited)
         for (c in Channel.entries) values[c.ordinal] = edited[c]
-        revision.intValue++
     }
 
     private companion object {
