@@ -1,0 +1,32 @@
+{
+  "format": 1,
+  "gate": 0.3,
+  "compression": 0.6,
+  "gain": 1.15,
+  "attack": 0.018,
+  "release": 0.075,
+  "openLevel": 0.1,
+  "closeLevel": 0.05,
+  "closeRatio": 0.55,
+  "peakDecay": 1.2,
+  "minOpen": 0.05,
+  "minClosure": 0.06,
+  "maxOpen": 0.8,
+  "widthGain": 0.35,
+  "roundGain": 0.5,
+  "shapeSmoothing": 0.06,
+  "headBob": 0.04,
+  "emotionRestraint": 0.4,
+  "springBoost": { "base": 1.6, "energy": 1.4 },
+  "beat": { "threshold": 0.5, "cooldown": 0.5, "duration": 0.32, "brow": 0.3, "lid": 0.1, "nod": 0.06 },
+  "style": {
+    "gainBase": 0.7,
+    "gainEnergy": 0.6,
+    "seriousRestraint": 0.35,
+    "seriousBeats": 0.6,
+    "smirk": 0.25,
+    "smirkPlayfulness": 0.5,
+    "laughPlayfulness": 0.7,
+    "quirkSeriousness": 0.6
+  }
+}

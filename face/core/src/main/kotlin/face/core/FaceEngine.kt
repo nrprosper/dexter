@@ -30,8 +30,6 @@ import face.core.behavior.LifeContext
 import face.core.behavior.LifeLayer
 import face.core.behavior.Quirks
 import face.core.behavior.ReactionLayer
-import face.core.behavior.SpeechLayer
-import face.core.behavior.SpeechTrackLayer
 import face.core.behavior.Vigilance
 import face.core.director.Director
 import face.core.director.DirectorHooks
@@ -51,6 +49,10 @@ import face.core.senses.SensesLayer
 import face.core.senses.TiltParallax
 import face.core.senses.TouchResponder
 import face.core.senses.VolumeWatch
+import face.core.speech.MouthConfig
+import face.core.speech.SpeechLayer
+import face.core.speech.SpeechProbe
+import face.core.speech.SpeechTrackLayer
 import face.core.rig.ChannelGroup
 import face.core.rig.Constraints
 import face.core.rig.FacePose
@@ -70,6 +72,7 @@ public class FaceEngine(
     dynamics: DynamicsConfig? = null,
     life: LifeConfig? = null,
     personality: Personality = Personality(),
+    mouth: MouthConfig = MouthConfig.loadBundled(),
 ) : FaceController {
     private val inbox = FaceInbox()
     private val neutral = FacePose()
@@ -86,8 +89,9 @@ public class FaceEngine(
     private val breath = BreathGenerator(startLife.breath, ctx)
     private val wakeUp: () -> Unit = { wakeIfSleepy() }
     private val activities = ActivityController(startLife.activity, rng, ctx, gaze, blink, boredom, wakeUp)
-    private val speech = SpeechTrackLayer()
     private val emotionState = EmotionState()
+    private val laughCue: () -> Unit = { reactions.react(FaceReaction.Laugh) }
+    private val speech = SpeechTrackLayer(rng, ctx, emotionState, mouth, laughCue)
     private val mood = MoodModel()
     private val quirks = Quirks(ctx, blink)
     private val hooks = object : DirectorHooks {
@@ -123,6 +127,7 @@ public class FaceEngine(
     private val mix = FloatArray(Emotion.entries.size)
     private var mixArousal = 0.5f
     private var appliedSpeed = -1f
+    private var appliedBoost = 1f
     private val state = MutableStateFlow(FaceSnapshot())
 
     override val snapshot: StateFlow<FaceSnapshot> = state
@@ -152,6 +157,14 @@ public class FaceEngine(
     public val vigilance: Vigilance get() = ctx.vigilance
 
     public val time: Double get() = ctx.time
+
+    public val speechProbe: SpeechProbe get() = speech.probe
+
+    public var mouthConfig: MouthConfig
+        get() = speech.config
+        set(value) {
+            speech.config = value
+        }
 
     init {
         library.poseInto(neutral, ExpressionId.Neutral)
@@ -236,10 +249,12 @@ public class FaceEngine(
         boredom.dozeOff()
     }
 
-    public fun step(dt: Float) {
+    // frameNanos is the frame's System.nanoTime-based timestamp, which audio playback clocks share;
+    // without one (tests, tools) speech is sampled at simulated time.
+    public fun step(dt: Float, frameNanos: Long = NO_FRAME_TIME) {
         val clamped = dt.coerceIn(0f, FrameTicker.MAX_DT)
         ctx.time += clamped
-        speech.nowNanos = (ctx.time * NANOS_PER_SECOND).toLong()
+        speech.nowNanos = if (frameNanos != NO_FRAME_TIME) frameNanos else (ctx.time * NANOS_PER_SECOND).toLong()
         drainInbox()
         director.speechEnergy = if (speech.speaking) speech.energy else -1f
         if (mixMode) {
@@ -250,12 +265,14 @@ public class FaceEngine(
         }
         val saver = device.state.batterySaver
         val speed = speedFor(emotionState.arousal) * (if (saver) SAVER_SPEED else 1f)
-        if (abs(speed - appliedSpeed) > SPEED_EPSILON) applyDynamics(speed)
+        if (abs(speed - appliedSpeed) > SPEED_EPSILON || abs(speech.springBoost - appliedBoost) > SPEED_EPSILON) applyDynamics(speed)
         idle.rateScale = (IDLE_RATE_BASE + IDLE_RATE_GAIN * emotionState.arousal) * (if (saver) SAVER_IDLE else 1f)
         tilt.x = inbox.tiltX()
         tilt.y = inbox.tiltY()
         reactions.update(clamped)
+        quirks.playfulAllowed = speech.quirksAllowed
         quirks.update(clamped)
+        speech.update(clamped)
         device.update(clamped)
         volume.update(clamped)
         touch.update(clamped)
@@ -371,10 +388,12 @@ public class FaceEngine(
 
     private fun applyDynamics(speed: Float) {
         appliedSpeed = speed
+        appliedBoost = speech.springBoost
         val all = Channel.all
         for (i in all.indices) {
             val p = dynamics[all[i].group]
-            springs.configure(i, p.frequency * speed, p.damping, p.response)
+            val boost = if (SPEECH_CHANNELS[i]) appliedBoost else 1f
+            springs.configure(i, p.frequency * speed * boost, p.damping, p.response)
         }
     }
 
@@ -410,6 +429,10 @@ public class FaceEngine(
         const val SURPRISE_NO_BLINK = 1.5f
         const val WAKE = "wake"
         const val NANOS_PER_SECOND = 1e9
+        const val NO_FRAME_TIME = Long.MIN_VALUE
+        val SPEECH_CHANNELS: BooleanArray = BooleanArray(Channel.count) {
+            Channel.all[it] == Channel.MouthOpen || Channel.all[it] == Channel.MouthWidth || Channel.all[it] == Channel.MouthRoundness
+        }
         const val SPEED_BASE = 0.85f
         const val SPEED_GAIN = 0.3f
         const val SPEED_EPSILON = 0.01f

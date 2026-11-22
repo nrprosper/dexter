@@ -37,12 +37,6 @@ internal class LifeLayer(
     }
 }
 
-internal class SpeechLayer(private val speech: SpeechTrackLayer) : Layer() {
-    override fun apply(target: FacePose) {
-        speech.apply(target)
-    }
-}
-
 internal class ReactionLayer(
     private val reactions: ReactionRouter,
     private val quirks: Quirks,
