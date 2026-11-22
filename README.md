@@ -10,10 +10,11 @@ The current focus is the **Face Engine**, a self-contained set of modules that t
 | --- | --- | --- |
 | 0 | Project skeleton: modules, version catalog, blank `FaceView` | Done |
 | 1 | Static rig, bold renderer, three silhouettes, 14 expressions, playground | Done: Orb silhouette, mint accent |
-| 2 | Time, frame loop and springs | Next |
-| 3–8 | Life, API, emotion, speech, integration, polish | Planned |
+| 2 | Frame loop, springs, frame-rate independent motion | Done |
+| 3 | Life: blink, gaze, breathing, idle | Next |
+| 4–8 | API, emotion, speech, integration, polish | Planned |
 
-The app opens to a static neutral face on a black, immersive screen. There is no motion yet.
+The app opens to the Orb face (mint) on a black, immersive screen. Every change animates through springs; the face doesn't move on its own yet (that is Phase 3).
 
 ## Requirements
 
@@ -55,12 +56,23 @@ What the renderer can do:
 - **Head** can roam the whole screen (`headX`/`headY` ±1 reach the edges), scale 0.5×–1.8×, tilt ±45° and squash or stretch.
 - **Backdrop** is either pure dark (OLED) or a soft accent glow that follows the face.
 
+## Animation
+
+`FaceEngine` (core) holds a **target** pose and the **displayed** pose. Each frame, `step(dt)` pulls every channel towards its target through a second-order spring (frequency f, damping ζ, response r) with one profile per channel group: pupils fast, lids and mouth medium, head slow with a little anticipation. Defaults live in `DynamicsConfig.Default`.
+
+- Interruptions are smooth because springs keep their velocity.
+- Motion is the same at 30, 60 and 120 Hz: each frame is integrated in fixed sub-steps of at most 1/240 s, and `dt` is clamped to 50 ms.
+- `AnimatedFace` runs one `withFrameNanos` loop only while the screen is at least `STARTED`. The pose is read only in the draw phase, so nothing recomposes per frame.
+
 ## Face Playground (debug builds)
 
 A debug install adds a second launcher icon, **Face Playground**.
 
 - Switch silhouettes (Orb, Soft Block, Capsule), accent colour, brows, filled/stroke mouth and glow backdrop at the top. **Center** brings a roaming face back.
-- Tap an expression chip to load it, then drag any slider. Tap a channel's label to reset it.
+- Tap an expression chip to animate to it, then drag any slider (the face follows through the springs). Tap a channel's label to reset it.
+- **Spam random targets** throws a random expression (often at a random place, size and tilt) every 0.12–0.45 s: the stress test for pops.
+- **Dynamics** has live f / ζ / r sliders per channel group, plus Reset.
+- The top-right overlay shows fps and the worst frame time of the last half second.
 - Tap the face for a full-screen view. In full screen, tap to step through the expressions; long-press to go back.
 - **Save** writes the pose as delta JSON and copies it to the clipboard. To copy saved poses into the repo:
   ```bash
