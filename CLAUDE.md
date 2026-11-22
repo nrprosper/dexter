@@ -19,7 +19,7 @@ If a task conflicts with the architecture doc, stop and ask. Don't quietly diver
 - Gradle Kotlin DSL with a version catalog (`gradle/libs.versions.toml`)
 - Rendering: Compose `Canvas` / `DrawScope`, driven by a single `withFrameNanos` loop
 - Tests: JUnit for pure-Kotlin modules; screenshot tests (Paparazzi or Roborazzi) as a test-only dependency
-- minSdk: TODO (decide in Phase 0). RenderEffect needs 31+, AGSL needs 33+. Every effect must have a plain-Canvas fallback.
+- minSdk: **31** (decided in Phase 0). RenderEffect is available natively; AGSL (33+) only behind a runtime check. Every effect must have a plain-Canvas fallback.
 
 ## Module layout
 
@@ -87,9 +87,9 @@ Run `:face:core:test` before saying a task is done.
 
 ## Open decisions (update as they're made)
 
-- [ ] minSdk
-- [ ] Face silhouette (eye shape, mouth style, brows or none)
-- [ ] Accent colour and background
+- [x] minSdk: 31
+- [x] Face silhouette: **Orb** (round superellipse eyes with pupils, brows on, filled mouth)
+- [x] Accent colour and background: **mint `#5CF2C2`** on near-black `#050507` with the glow backdrop
 - [ ] Two or three signature quirks
-- [ ] JSON format for expressions and personality
+- [ ] JSON format for expressions and personality (expressions decided in Phase 1: `{format: 1, id, deltas: {channelKey: delta}}`, deltas relative to neutral; personality still open, Phase 5)
 - [ ] TTS source (on-device or cloud), which affects the speech phase

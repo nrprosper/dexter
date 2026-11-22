@@ -1,0 +1,22 @@
+{
+  "format": 1,
+  "id": "concerned",
+  "deltas": {
+    "upperLidTiltL": -0.45,
+    "upperLidTiltR": -0.45,
+    "gazeY": 0.05,
+    "pupilSize": -0.1,
+    "browHeightL": 0.4,
+    "browHeightR": 0.4,
+    "browTiltL": -0.7,
+    "browTiltR": -0.7,
+    "browCurveL": -0.2,
+    "browCurveR": -0.2,
+    "mouthCurve": -0.55,
+    "mouthWidth": -0.1,
+    "mouthThickness": -0.3,
+    "mouthAsymmetry": -0.25,
+    "headY": -0.03,
+    "sweat": 0.7
+  }
+}

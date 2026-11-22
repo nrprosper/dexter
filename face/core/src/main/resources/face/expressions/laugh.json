@@ -1,0 +1,20 @@
+{
+  "format": 1,
+  "id": "laugh",
+  "deltas": {
+    "eyeSquint": 1.0,
+    "browHeightL": 0.6,
+    "browHeightR": 0.6,
+    "browTiltL": -0.3,
+    "browTiltR": -0.3,
+    "mouthCurve": 0.55,
+    "mouthOpen": 1.0,
+    "mouthWidth": 0.45,
+    "mouthRoundness": 0.1,
+    "headY": 0.06,
+    "headTilt": -0.15,
+    "headScale": 0.08,
+    "headSquash": 0.3,
+    "blush": 0.5
+  }
+}

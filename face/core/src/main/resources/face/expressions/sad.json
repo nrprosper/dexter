@@ -1,0 +1,27 @@
+{
+  "format": 1,
+  "id": "sad",
+  "deltas": {
+    "eyeOpenL": -0.2,
+    "eyeOpenR": -0.2,
+    "upperLidTiltL": -0.65,
+    "upperLidTiltR": -0.65,
+    "upperLidCurveL": -0.2,
+    "upperLidCurveR": -0.2,
+    "eyeY": -0.12,
+    "gazeY": -0.5,
+    "pupilSize": 0.12,
+    "highlightIntensity": -0.2,
+    "browHeightL": 0.25,
+    "browHeightR": 0.25,
+    "browTiltL": -0.8,
+    "browTiltR": -0.8,
+    "mouthCurve": -0.95,
+    "mouthWidth": 0.15,
+    "mouthThickness": -0.2,
+    "headY": -0.08,
+    "headTilt": 0.12,
+    "headSquash": -0.12,
+    "glow": -0.2
+  }
+}

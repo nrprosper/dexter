@@ -1,0 +1,10 @@
+{
+  "format": 1,
+  "id": "neutral",
+  "deltas": {
+    "eyeOpenL": -0.03,
+    "eyeOpenR": -0.03,
+    "mouthCurve": 0.15,
+    "mouthWidth": -0.3
+  }
+}

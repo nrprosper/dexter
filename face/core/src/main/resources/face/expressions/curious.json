@@ -1,0 +1,21 @@
+{
+  "format": 1,
+  "id": "curious",
+  "deltas": {
+    "eyeOpenL": -0.12,
+    "eyeHeightR": 0.12,
+    "upperLidCurveL": 0.3,
+    "upperLidCurveR": 0.3,
+    "gazeX": 0.3,
+    "gazeY": 0.2,
+    "pupilSize": 0.15,
+    "browHeightL": 0.1,
+    "browHeightR": 0.7,
+    "browCurveR": 0.4,
+    "mouthCurve": -0.15,
+    "mouthOpen": 0.15,
+    "mouthWidth": -0.15,
+    "mouthRoundness": 0.6,
+    "headTilt": 0.2
+  }
+}

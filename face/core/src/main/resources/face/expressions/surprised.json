@@ -1,0 +1,25 @@
+{
+  "format": 1,
+  "id": "surprised",
+  "deltas": {
+    "eyeOpenL": 0.3,
+    "eyeOpenR": 0.3,
+    "eyeHeightL": 0.05,
+    "eyeHeightR": 0.05,
+    "upperLidCurveL": 0.3,
+    "upperLidCurveR": 0.3,
+    "pupilSize": -0.3,
+    "browHeightL": 1.0,
+    "browHeightR": 1.0,
+    "browCurveL": 0.5,
+    "browCurveR": 0.5,
+    "mouthCurve": -0.15,
+    "mouthOpen": 0.85,
+    "mouthWidth": 0.2,
+    "mouthRoundness": 0.85,
+    "headY": 0.06,
+    "headScale": 0.1,
+    "headSquash": 0.4,
+    "glow": 0.25
+  }
+}

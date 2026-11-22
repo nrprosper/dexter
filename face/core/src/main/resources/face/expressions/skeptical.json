@@ -1,0 +1,18 @@
+{
+  "format": 1,
+  "id": "skeptical",
+  "deltas": {
+    "eyeOpenL": -0.4,
+    "eyeOpenR": 0.05,
+    "upperLidTiltL": 0.3,
+    "gazeX": -0.3,
+    "browHeightL": -0.6,
+    "browHeightR": 0.9,
+    "browTiltL": 0.4,
+    "browCurveR": 0.4,
+    "mouthCurve": -0.2,
+    "mouthWidth": -0.1,
+    "mouthAsymmetry": -0.7,
+    "headTilt": 0.15
+  }
+}

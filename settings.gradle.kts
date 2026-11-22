@@ -24,3 +24,8 @@ dependencyResolutionManagement {
 
 rootProject.name = "dexter"
 include(":app")
+include(":face:api")
+include(":face:core")
+include(":face:render-compose")
+include(":face:speech-android")
+include(":face:playground")
