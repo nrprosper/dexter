@@ -17,11 +17,13 @@ import kotlinx.coroutines.launch
 import kotlin.math.PI
 import kotlin.math.max
 import kotlin.math.sin
+import kotlin.random.Random
 
 // Stands in for the real orchestrator: it only knows FaceController, and calls it from a background dispatcher.
 internal class FakeOrchestrator(private val face: FaceController, private val scope: CoroutineScope) {
     private var voiceJob: Job? = null
     private var scenarioJob: Job? = null
+    private var noisyJob: Job? = null
 
     fun activity(activity: Activity) {
         if (activity != Activity.Speaking) face.detachSpeech()
@@ -37,6 +39,23 @@ internal class FakeOrchestrator(private val face: FaceController, private val sc
         voiceJob?.cancel()
         voiceJob = if (on) scope.launch(Dispatchers.Default) { talk(Long.MAX_VALUE) } else null
         if (!on) face.setUserVoiceLevel(0f)
+    }
+
+    // An LLM that labels too often and too randomly, mostly "happy": the Director should keep the face calm.
+    fun noisyLlm(on: Boolean) {
+        noisyJob?.cancel()
+        noisyJob = if (!on) null else scope.launch(Dispatchers.Default) {
+            val rng = Random(System.nanoTime())
+            while (isActive) {
+                delay(rng.nextLong(NOISY_MIN_MILLIS, NOISY_MAX_MILLIS))
+                val burst = if (rng.nextFloat() < BURST_CHANCE) 3 else 1
+                repeat(burst) {
+                    val emotion = if (rng.nextFloat() < HAPPY_BIAS) Emotion.Happy else Emotion.entries.random(rng)
+                    face.setEmotion(EmotionSignal(emotion, rng.range(0.3f, 1f), rng.range(0.2f, 1f)))
+                    if (burst > 1) delay(BURST_GAP_MILLIS)
+                }
+            }
+        }
     }
 
     fun runScenario() {
@@ -77,8 +96,15 @@ internal class FakeOrchestrator(private val face: FaceController, private val sc
         const val THINK_MILLIS = 4_000L
         const val SPEAK_MILLIS = 5_000L
         const val VOICE_STEP_MILLIS = 33L
+        const val NOISY_MIN_MILLIS = 800L
+        const val NOISY_MAX_MILLIS = 3_000L
+        const val BURST_CHANCE = 0.15f
+        const val BURST_GAP_MILLIS = 250L
+        const val HAPPY_BIAS = 0.45f
     }
 }
+
+private fun Random.range(from: Float, until: Float): Float = from + (until - from) * nextFloat()
 
 // Syllables at about 4.5 Hz with short pauses between phrases; computed from the timestamp, so it never allocates.
 internal class SyntheticSpeech : SpeechTrack {

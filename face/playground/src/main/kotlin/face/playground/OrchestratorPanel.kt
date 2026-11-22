@@ -36,6 +36,7 @@ internal fun OrchestratorPanel(face: FaceController) {
     val snapshot by face.snapshot.collectAsState()
     var intensity by remember { mutableFloatStateOf(0.7f) }
     var talking by remember { mutableStateOf(false) }
+    var noisy by remember { mutableStateOf(false) }
 
     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -43,7 +44,8 @@ internal fun OrchestratorPanel(face: FaceController) {
             Button({ orchestrator.runScenario() }) { Text("Run scenario") }
         }
         Text(
-            "activity ${snapshot.activity} · ${snapshot.emotion} ${"%.1f".format(snapshot.intensity)}" +
+            "${snapshot.personality} · ${snapshot.activity} · ${snapshot.emotion} ${"%.1f".format(snapshot.intensity)}" +
+                " · mood ${snapshot.mood} · arousal ${"%.1f".format(snapshot.arousal)}" +
                 (if (snapshot.speaking) " · speaking" else "") + (if (snapshot.asleep) " · asleep" else ""),
             style = MaterialTheme.typography.bodySmall,
         )
@@ -71,6 +73,11 @@ internal fun OrchestratorPanel(face: FaceController) {
             Switch(talking, {
                 talking = it
                 orchestrator.userTalking(it)
+            })
+            Text("  Noisy LLM", style = MaterialTheme.typography.labelLarge)
+            Switch(noisy, {
+                noisy = it
+                orchestrator.noisyLlm(it)
             })
         }
     }
