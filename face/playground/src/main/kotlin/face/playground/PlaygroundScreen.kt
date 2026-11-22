@@ -1,9 +1,9 @@
 package face.playground
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -37,7 +37,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import face.core.expression.ExpressionId
@@ -54,15 +53,7 @@ import face.render.MouthStyle
 @Composable
 internal fun PlaygroundScreen(state: PlaygroundState, onSave: (String) -> String) {
     var fullscreen by rememberSaveable { mutableStateOf(false) }
-    val faceGestures = Modifier.pointerInput(Unit) {
-        detectTapGestures(
-            onTap = {
-                state.poke()
-                if (fullscreen) state.load(nextExpression(state.selected)) else fullscreen = true
-            },
-            onLongPress = { fullscreen = false },
-        )
-    }
+    BackHandler(fullscreen) { fullscreen = false }
     LaunchedEffect(state.spamming) {
         if (!state.spamming) return@LaunchedEffect
         val rng = Rng(System.nanoTime())
@@ -72,12 +63,12 @@ internal fun PlaygroundScreen(state: PlaygroundState, onSave: (String) -> String
         }
     }
     if (fullscreen) {
-        AnimatedFace(state.engine, Modifier.fillMaxSize().then(faceGestures), state.style, state.stats, if (state.fastTime) FAST_TIME else 1)
+        AnimatedFace(state.engine, Modifier.fillMaxSize(), state.style, state.stats, if (state.fastTime) FAST_TIME else 1)
         return
     }
     Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
         Box(Modifier.fillMaxWidth().weight(0.42f)) {
-            AnimatedFace(state.engine, Modifier.fillMaxSize().then(faceGestures), state.style, state.stats, if (state.fastTime) FAST_TIME else 1)
+            AnimatedFace(state.engine, Modifier.fillMaxSize(), state.style, state.stats, if (state.fastTime) FAST_TIME else 1)
             Text(
                 state.selected ?: "custom",
                 Modifier.align(Alignment.TopStart).padding(12.dp),
@@ -92,12 +83,12 @@ internal fun PlaygroundScreen(state: PlaygroundState, onSave: (String) -> String
                 style = MaterialTheme.typography.labelMedium,
             )
         }
-        Controls(state, onSave, Modifier.weight(0.58f))
+        Controls(state, onSave, { fullscreen = true }, Modifier.weight(0.58f))
     }
 }
 
 @Composable
-private fun Controls(state: PlaygroundState, onSave: (String) -> String, modifier: Modifier) {
+private fun Controls(state: PlaygroundState, onSave: (String) -> String, onFullscreen: () -> Unit, modifier: Modifier) {
     var name by rememberSaveable { mutableStateOf("") }
     var status by remember { mutableStateOf("") }
     LazyColumn(modifier.fillMaxWidth(), contentPadding = PaddingValues(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -156,6 +147,7 @@ private fun Controls(state: PlaygroundState, onSave: (String) -> String, modifie
         item {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 OutlinedButton({ state.center() }) { Text("Center") }
+                OutlinedButton(onFullscreen) { Text("Full") }
                 OutlinedTextField(name, { name = it }, Modifier.weight(1f), label = { Text("pose name") }, singleLine = true)
                 Button({ status = onSave(name) }, enabled = PoseStore.sanitize(name).isNotEmpty()) { Text("Save") }
             }
@@ -173,6 +165,7 @@ private fun Controls(state: PlaygroundState, onSave: (String) -> String, modifie
                 Toggle("Spam random targets", state.spamming) { state.spamming = it }
             }
         }
+        item { PhoneEventsPanel(state.engine) }
         item { PersonalityPanel(state.engine) }
         item { OrchestratorPanel(state.engine) }
         item { EmotionMixerPanel(state.engine) }
@@ -245,7 +238,3 @@ private const val SPAM_MIN_SECONDS = 0.12f
 private const val SPAM_MAX_SECONDS = 0.45f
 private const val OVERLAY_PERIOD_MILLIS = 500L
 
-private fun nextExpression(current: String?): ExpressionId {
-    val index = ExpressionId.entries.indexOfFirst { it.key == current }
-    return ExpressionId.entries[(index + 1) % ExpressionId.entries.size]
-}

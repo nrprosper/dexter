@@ -63,10 +63,6 @@ internal class PlaygroundState(private val library: ExpressionLibrary, saved: Li
         engine.dozeOff()
     }
 
-    fun poke() {
-        engine.interact()
-    }
-
     fun load(id: ExpressionId) {
         library.poseInto(edited, id)
         selected = id.key

@@ -14,6 +14,7 @@ The current focus is the **Face Engine**, a self-contained set of modules that t
 | 3 | Life: blink, gaze, breathing, idle, boredom and sleep | Done (10-minute desk test is yours) |
 | 4 | Public API (`FaceController`), activities, inbox | Done |
 | 5 | Director, mood, reactions, personality, quirks | Done |
+| 5.5 | Phone senses: battery, charger, volume, headphones, shake, face-down, touch | Done |
 | 6 | Speech v1 (amplitude lip-sync) | Next |
 | 7–8 | Integration, polish | Planned |
 
@@ -109,6 +110,15 @@ The LLM chooses the feeling, the face chooses the performance.
 - **Reactions:** Surprise, Startle, Delight, Acknowledge, Oops, Laugh and Realization play as attack/hold/release envelopes. A higher priority interrupts a lower one, each has a cooldown (five surprises in a row give one pop), and several hand over to a follow-up emotion.
 - **Quirks:** a double blink when unsure, a happy head wobble, and a one-eye peek when woken.
 - **Personality:** JSON (format 1) in `face/core/src/main/resources/face/personality/`: **Dexter** (default: bouncy, curious, expressive) and **Sage** (calm, composed, slow). Apply one at runtime with `setPersonality`.
+
+## Phone senses (Phase 5.5)
+
+`:face:senses-android` (`PhoneSenses`, depends only on `:face:api`) turns phone events into face intent while the face is on screen, and always reacts playfully:
+- **Low battery** (≤15%): the face turns red and worried and gets sleepy sooner; charging brings it back.
+- **Charger in/out, battery full, headphones**: a zap, an "oh?", a contented stretch, a little head bob.
+- **Shake**: dizzy circling eyes with swirls orbiting above the head. **Face-down**: sleeps; picking it up wakes it with a peek.
+- **Volume keys**: the face scoots up-right, shrinks and watches the system slider level, then bounces back.
+- **Touch** (hit-tested on the drawn face): poke an eye, tap a cheek (giggle), the mouth (boop) or forehead (bonk), long-press to pet, drag and the eyes follow, rapid taps escalate to a pout and a grumpy turn-away.
 
 ## Face Playground (debug builds)
 
