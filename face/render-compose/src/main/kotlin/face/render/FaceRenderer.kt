@@ -108,12 +108,15 @@ public class FaceRenderer {
         val x = eyeCenterX(pose, style, u, cx, side)
         val y = eyeCenterY(pose, style, u, cy, side)
         val radius = max(eyeHalfWidth(pose, style, u, side), eyeBaseHalfHeight(pose, style, u, side)) * GLOW_RADIUS
+        val left = side < 0
+        val visible = (min(pose[if (left) Channel.EyeOpenL else Channel.EyeOpenR], 1f) -
+            pose[if (left) Channel.LowerLidRaiseL else Channel.LowerLidRaiseR]).coerceIn(0f, 1f)
         val brush = glowBrushFor(accent)
         withTransform({
             translate(x, y)
             scale(radius, radius, Offset.Zero)
         }) {
-            drawCircle(brush, radius = 1f, center = Offset.Zero, alpha = glow * GLOW_ALPHA)
+            drawCircle(brush, radius = 1f, center = Offset.Zero, alpha = glow * visible * GLOW_ALPHA)
         }
     }
 
