@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Generated from the neutral Orb face geometry (FaceStyle.Orb); 108dp adaptive-icon canvas. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <path android:fillColor="#FFFFFFFF" android:fillType="evenOdd" android:pathData="M28.26,51.72 A9.90,11.38 0 1,0 48.06,51.72 A9.90,11.38 0 1,0 28.26,51.72 Z M33.41,51.72 A4.75,4.75 0 1,0 42.91,51.72 A4.75,4.75 0 1,0 33.41,51.72 Z" />
+    <path android:fillColor="#FFFFFFFF" android:fillType="evenOdd" android:pathData="M59.94,51.72 A9.90,11.38 0 1,0 79.74,51.72 A9.90,11.38 0 1,0 59.94,51.72 Z M65.09,51.72 A4.75,4.75 0 1,0 74.59,51.72 A4.75,4.75 0 1,0 65.09,51.72 Z" />
+    <path android:strokeColor="#FFFFFFFF" android:strokeWidth="1.72" android:strokeLineCap="round" android:pathData="M25.78,34.89 Q38.16,31.92 50.53,34.89" />
+    <path android:strokeColor="#FFFFFFFF" android:strokeWidth="1.72" android:strokeLineCap="round" android:pathData="M57.47,34.89 Q69.84,31.92 82.22,34.89" />
+    <path android:strokeColor="#FFFFFFFF" android:strokeWidth="2.38" android:strokeLineCap="round" android:pathData="M48.46,73.33 Q54.00,74.23 59.54,73.33" />
+</vector>

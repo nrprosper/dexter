@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 108 108" width="160" height="160">
+<defs><radialGradient id="g" cx="0.5" cy="0.5" r="0.5"><stop offset="0" stop-color="#4CC9F0" stop-opacity="0.25"/><stop offset="1" stop-color="#4CC9F0" stop-opacity="0"/></radialGradient></defs>
+<rect width="108" height="108" rx="24" fill="#050507"/>
+<circle cx="54.00" cy="53.00" r="40" fill="url(#g)"/>
+<path fill="#4CC9F0" d="M28.26,51.72 A9.90,11.38 0 1,0 48.06,51.72 A9.90,11.38 0 1,0 28.26,51.72 Z"/>
+<path fill="#4CC9F0" d="M59.94,51.72 A9.90,11.38 0 1,0 79.74,51.72 A9.90,11.38 0 1,0 59.94,51.72 Z"/>
+<path fill="#0B0B12" d="M33.41,51.72 A4.75,4.75 0 1,0 42.91,51.72 A4.75,4.75 0 1,0 33.41,51.72 Z"/>
+<path fill="#0B0B12" d="M65.09,51.72 A4.75,4.75 0 1,0 74.59,51.72 A4.75,4.75 0 1,0 65.09,51.72 Z"/>
+<path fill="#FFFFFF" d="M35.07,50.06 A1.43,1.43 0 1,0 37.92,50.06 A1.43,1.43 0 1,0 35.07,50.06 Z"/>
+<path fill="#FFFFFF" d="M66.75,50.06 A1.43,1.43 0 1,0 69.60,50.06 A1.43,1.43 0 1,0 66.75,50.06 Z"/>
+<path fill="#FFFFFF" d="M39.06,53.24 A0.62,0.62 0 1,0 40.30,53.24 A0.62,0.62 0 1,0 39.06,53.24 Z"/>
+<path fill="#FFFFFF" d="M70.74,53.24 A0.62,0.62 0 1,0 71.98,53.24 A0.62,0.62 0 1,0 70.74,53.24 Z"/>
+<path fill="none" stroke="#4CC9F0" stroke-width="1.72" stroke-linecap="round" d="M25.78,34.89 Q38.16,31.92 50.53,34.89"/>
+<path fill="none" stroke="#4CC9F0" stroke-width="1.72" stroke-linecap="round" d="M57.47,34.89 Q69.84,31.92 82.22,34.89"/>
+<path fill="none" stroke="#4CC9F0" stroke-width="2.38" stroke-linecap="round" d="M48.46,73.33 Q54.00,74.23 59.54,73.33"/>
+</svg>
