@@ -8,6 +8,7 @@ import face.speech.PcmPlayer
 import kotlinx.coroutines.CoroutineScope
 import voice.api.RoutingPolicy
 import voice.api.TtsRouter
+import voice.kokoro.KokoroEngine
 import voice.piper.PiperEngine
 import voice.piper.model.VoiceManifest
 import voice.piper.model.VoiceStore
@@ -23,8 +24,9 @@ public class VoiceStack(context: Context, face: FaceController, scope: Coroutine
     public val connectivity: AndroidConnectivity = AndroidConnectivity(app)
     public val store: VoiceStore = VoiceStore(app.filesDir, VoiceManifest.loadBundled(), connectivity)
     public val piper: PiperEngine = PiperEngine(store)
+    public val kokoro: KokoroEngine = KokoroEngine(VoiceStore(app.filesDir, KokoroEngine.manifest(), connectivity))
     public val system: SystemTtsEngine = SystemTtsEngine(app)
-    public val router: TtsRouter = TtsRouter(listOf(piper, system), RoutingPolicy(), connectivity)
+    public val router: TtsRouter = TtsRouter(listOf(kokoro, piper, system), RoutingPolicy(), connectivity)
     public val player: PcmPlayer = PcmPlayer({ AudioTrackSink(app) })
     public val speaker: Speaker = Speaker(router, player, face, scope, manageActivity)
 
@@ -42,9 +44,9 @@ public class VoiceStack(context: Context, face: FaceController, scope: Coroutine
             prefs.edit().putInt(LEAD, value).apply()
         }
 
-    // Which engine speaks: the phone's Google voice by default, or the downloaded Piper voice.
+    // Which engine speaks: the phone's Google voice by default, or a downloaded Kokoro or Piper voice.
     public var engine: String
-        get() = prefs.getString(ENGINE, null)?.takeIf { it == PiperEngine.ID } ?: SystemTtsEngine.ID
+        get() = prefs.getString(ENGINE, null)?.takeIf { it == PiperEngine.ID || it == KokoroEngine.ID } ?: SystemTtsEngine.ID
         set(value) {
             prefs.edit().putString(ENGINE, value).apply()
             applyEngine()
@@ -52,10 +54,16 @@ public class VoiceStack(context: Context, face: FaceController, scope: Coroutine
 
     // The chosen voice for the current engine (null = that engine's best default).
     public var voiceId: String?
-        get() = prefs.getString(if (engine == PiperEngine.ID) VOICE else SYSTEM_VOICE, null)
+        get() = prefs.getString(voiceKey(engine), null)
         set(value) {
-            prefs.edit().putString(if (engine == PiperEngine.ID) VOICE else SYSTEM_VOICE, value).apply()
+            prefs.edit().putString(voiceKey(engine), value).apply()
         }
+
+    private fun voiceKey(engine: String): String = when (engine) {
+        PiperEngine.ID -> VOICE
+        KokoroEngine.ID -> KOKORO_VOICE
+        else -> SYSTEM_VOICE
+    }
 
     public var allowMeteredDownloads: Boolean
         get() = store.allowMetered
@@ -76,9 +84,11 @@ public class VoiceStack(context: Context, face: FaceController, scope: Coroutine
         applyEngine()
     }
 
+    // The chosen engine first, then the phone's voice, so a voice that isn't downloaded yet falls back to the natural one.
     private fun applyEngine() {
         val first = engine
-        router.policy = RoutingPolicy(order = listOf(first) + RoutingPolicy.DEFAULT_ORDER.filter { it != first })
+        val order = listOf(first, SystemTtsEngine.ID) + RoutingPolicy.DEFAULT_ORDER
+        router.policy = RoutingPolicy(order = order.distinct())
     }
 
     private companion object {
@@ -87,6 +97,7 @@ public class VoiceStack(context: Context, face: FaceController, scope: Coroutine
         const val LEAD = "lead_ms"
         const val VOICE = "voice_id"
         const val SYSTEM_VOICE = "system_voice_id"
+        const val KOKORO_VOICE = "kokoro_voice_id"
         const val ENGINE = "engine"
         const val METERED = "allow_metered_downloads"
     }

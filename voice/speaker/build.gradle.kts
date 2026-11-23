@@ -24,6 +24,7 @@ dependencies {
     api(project(":face:api"))
     api(project(":face:speech-android"))
     api(project(":voice:piper"))
+    api(project(":voice:kokoro"))
     api(project(":voice:system"))
     testImplementation(libs.junit)
 }
