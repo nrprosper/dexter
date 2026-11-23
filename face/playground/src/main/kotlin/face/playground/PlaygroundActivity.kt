@@ -19,14 +19,14 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
-import voice.speaker.VoiceStack
+import assistant.android.Assistant
 
 public class PlaygroundActivity : ComponentActivity() {
     private val store by lazy { PoseStore(this) }
     private val state by lazy { PlaygroundState(ExpressionLibrary.loadBundled(), store.loadAll()) }
     private val senses by lazy { PhoneSenses(this, state.engine) }
     private val voiceScope = CoroutineScope(SupervisorJob() + Dispatchers.Main + CoroutineExceptionHandler { _, e -> Log.w(TAG, "speech failed", e) })
-    private val voice by lazy { VoiceStack(this, state.engine, voiceScope) }
+    private val assistant by lazy { Assistant(this, state.engine, voiceScope) }
 
     override fun onStart() {
         super.onStart()
@@ -35,7 +35,7 @@ public class PlaygroundActivity : ComponentActivity() {
 
     override fun onStop() {
         senses.stop()
-        voice.speaker.stop()
+        assistant.orchestrator.stop()
         super.onStop()
     }
 
@@ -55,7 +55,7 @@ public class PlaygroundActivity : ComponentActivity() {
         setContent {
             MaterialTheme(colorScheme = darkColorScheme()) {
                 Surface(Modifier.fillMaxSize().safeDrawingPadding()) {
-                    PlaygroundScreen(state, voice) { raw ->
+                    PlaygroundScreen(state, assistant) { raw ->
                         val expression = state.export(PoseStore.sanitize(raw))
                         val file = store.save(expression)
                         state.remember(expression)
