@@ -30,9 +30,16 @@ If a task conflicts with the architecture doc, stop and ask. Don't quietly diver
 | `:face:core` | Pure Kotlin/JVM | The simulation: rig, expressions, director, mood, layers, springs, behaviors, RNG, clock |
 | `:face:render-compose` | Android library | `FaceRenderer`, the `FaceView` composable, frame loop, lifecycle, power handling |
 | `:face:speech-android` | Android library | `AudioTrack` PCM tap, amplitude envelope, `AmplitudeSpeechTrack` |
-| `:face:playground` | Debug-only | Channel sliders, emotion mixer, scripted scenarios, FPS overlay |
+| `:face:senses-android` | Android library | Phone events (battery, volume, tilt, touch...) into `FaceController` |
+| `:face:playground` | Debug-only | Channel sliders, emotion mixer, scripted scenarios, FPS overlay, voice panel |
+| `:voice:api` | Pure Kotlin/JVM | `TtsEngine`, `PcmChunk` (+ optional `Alignment`), capabilities, voices, settings, `TtsRouter`, `SentenceSplitter`, `TextNormalizer` |
+| `:voice:piper` | Android library | Piper voices through sherpa-onnx (lexicon frontend), voice manifest, verified resumable downloads |
+| `:voice:system` | Android library | Fallback: Android `TextToSpeech` rendered to WAV, played through our player |
+| `:voice:speaker` | Android library | `Speaker` (router → engine → `PcmPlayer` → face) and `VoiceStack`, the composition root |
 
-Dependency direction: `api` ← `core` ← `render-compose` ← `app`. `speech-android` depends only on `api`.
+Dependency direction: `api` ← `core` ← `render-compose` ← `app`. `speech-android` depends only on `face:api`.
+`voice:api` depends on nothing Android; engines depend on `voice:api`; only `voice:speaker` joins voice and face.
+A new TTS engine (Kokoro, ElevenLabs) implements `TtsEngine` and is added in `VoiceStack`; the face, player and `Speaker` don't change.
 
 ## Hard rules
 
@@ -47,6 +54,15 @@ Dependency direction: `api` ← `core` ← `render-compose` ← `app`. `speech-a
 9. **The AI never controls geometry.** Outside modules send intent (activity, emotion, intensity, tone, reactions). Only the Director and layers turn intent into channel values.
 10. **The API is idempotent for state, queued for events.** `setActivity` and `setEmotion` mean "latest wins". `react(...)` is queued and resolved by priority and cooldown. Calls go into a thread-safe inbox, drained at the start of each frame.
 11. **No new dependencies** without asking first, explaining what they add.
+
+## Public repo rules
+
+This repository is public.
+
+- Never commit secrets, keystores, `google-services.json`, `local.properties`, `.env` files, model files (`*.onnx`, voice archives), recordings or any personal data. `.gitignore` covers these; keep it that way.
+- Models are downloaded at runtime from their official source, listed in `voice/piper/src/main/resources/voice/piper/voices.json` with url, sha256, size and license.
+- The `Secret scan` GitHub Action runs gitleaks on every push and PR; a finding fails the build.
+- Every new library, model or data file gets a line in `THIRD_PARTY_NOTICES.md` with its license. No GPL code in the app.
 
 ## Code style
 
@@ -70,6 +86,7 @@ Dependency direction: `api` ← `core` ← `render-compose` ← `app`. `speech-a
 
 ```bash
 ./gradlew :face:core:test          # fast JVM tests: run after every core change
+./gradlew :voice:api:test          # TTS API, router, sentence splitter
 ./gradlew test                     # all unit tests
 ./gradlew :app:installDebug        # install on device
 ./gradlew lint                     # Android lint
@@ -92,4 +109,5 @@ Run `:face:core:test` before saying a task is done.
 - [x] Accent colour and background: **blue `#4CC9F0`** on near-black `#050507` with the glow backdrop (was mint until Phase 4)
 - [x] Signature quirks: **double-blink when unsure**, **happy wobble**, **one-eye peek on wake** (Phase 5)
 - [x] JSON format for expressions and personality: expressions `{format: 1, id, deltas}` (Phase 1); personality format 1 with grouped sections (mood, director, motion, blink, gaze, idle, sleepiness, quirks), see `face/core/src/main/resources/face/personality/` (Phase 5)
-- [ ] TTS source (on-device or cloud), which affects the speech phase
+- [x] TTS source (Phase 6): **offline first**. Default: Piper voices through sherpa-onnx 2.x (Apache-2.0) with the lexicon text frontend, no eSpeak NG. Fallback: Android `TextToSpeech`, only when no Piper voice is installed. Later: Kokoro-82M via sherpa-onnx (optional, higher quality), then ElevenLabs (cloud). Never the GPL `piper1-gpl` code.
+- [x] Default voice: `en_US-ljspeech-medium` int8 (LJ Speech, public-domain data), downloaded at runtime
