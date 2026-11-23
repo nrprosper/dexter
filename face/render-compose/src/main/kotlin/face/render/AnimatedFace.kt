@@ -25,6 +25,7 @@ public fun AnimatedFace(
     timeScale: Int = 1,
     touchable: Boolean = true,
     intro: FaceIntro? = null,
+    onDoubleTap: (() -> Unit)? = null,
 ) {
     val renderer = remember {
         FaceRenderer().apply {
@@ -72,7 +73,8 @@ public fun AnimatedFace(
             }
         }
     }
-    val touches = if (touchable) Modifier.faceTouches(engine, renderer) { currentStyle.value } else Modifier
+    val doubleTap = rememberUpdatedState(onDoubleTap)
+    val touches = if (touchable) Modifier.faceTouches(engine, renderer, { currentStyle.value }, { doubleTap.value }) else Modifier
     val viewport = Modifier.onSizeChanged { engine.setViewport(it.width.toFloat(), it.height.toFloat()) }
     FaceCanvas(engine.pose, style, frame, modifier.then(viewport).then(touches), renderer, clock)
 }
