@@ -22,6 +22,13 @@ class LexiconTest {
     }
 
     @Test
+    fun readsKokoroStyleFilesToo() {
+        val file = File(tmp.root, "us.txt").apply { writeText("hello həlˈO\nworld\twˈɜɹld\n") }
+        val lex = Lexicon.load(file)
+        assertTrue("hello" in lex && "world" in lex)
+    }
+
+    @Test
     fun unknownShortWordsAreSpelledOut() {
         val lex = Lexicon.of("hello", "the", "is", "don't")
         assertEquals("Hello, X K C D is the... Don't", lex.respell("Hello, XKCD is the... Don't"))
