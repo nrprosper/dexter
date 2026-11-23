@@ -18,6 +18,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
@@ -123,6 +124,36 @@ class OrchestratorTest {
         o.ask("and again?")
         advanceUntilIdle()
         assertEquals(listOf(0 to "hello dexter", 1 to "and again?"), brain.asked)
+    }
+
+    @Test
+    fun theMomentTravelsWithTheQuestionButNotIntoHistory() = runTest {
+        val o = Orchestrator(face, ears, brain, mouth, this, clock = { testScheduler.currentTime }, context = { "Sunday evening, 7:40 pm" })
+        o.ask("what should I do tonight?")
+        advanceUntilIdle()
+        o.ask("and tomorrow?")
+        advanceUntilIdle()
+        assertEquals("[Sunday evening, 7:40 pm]\nwhat should I do tonight?", brain.asked[0].second)
+        assertEquals(1, brain.asked[1].first)
+    }
+
+    @Test
+    fun listeningClearsTheLastTranscriptAndReportsTheVoiceLevel() = runTest {
+        val o = orchestrator()
+        o.ask("old question")
+        advanceUntilIdle()
+        val levels = ArrayList<Float>()
+        val heard = ArrayList<String>()
+        val watch = launch { o.voiceLevel.collect { levels.add(it) } }
+        val watchHeard = launch { o.lastHeard.collect { heard.add(it) } }
+        o.onDoubleTap()
+        advanceUntilIdle()
+        watch.cancel()
+        watchHeard.cancel()
+        assertTrue(0.6f in levels)
+        assertEquals(0f, o.voiceLevel.value)
+        assertTrue("" in heard, "the old transcript should clear when listening starts: $heard")
+        assertTrue("hel" in heard)
     }
 
     @Test

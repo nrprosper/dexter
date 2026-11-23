@@ -35,16 +35,22 @@ public class Orchestrator(
     private val scope: CoroutineScope,
     private val config: AssistantConfig = AssistantConfig(),
     private val clock: () -> Long,
+    // A short line about the moment ("Sunday evening, 7:40 pm"), sent with each question; not part of the history.
+    private val context: () -> String = { "" },
 ) {
     private val conversation = Conversation()
     private val mutableState = MutableStateFlow(AssistantState.Idle)
     private val mutableFeeling = MutableStateFlow<Feeling?>(null)
     private val mutableHeard = MutableStateFlow("")
+    private val mutableLevel = MutableStateFlow(0f)
     private var job: Job? = null
 
     public val state: StateFlow<AssistantState> = mutableState
     public val lastFeeling: StateFlow<Feeling?> = mutableFeeling
     public val lastHeard: StateFlow<String> = mutableHeard
+
+    // The user's voice level 0..1 while listening, for UI (the face gets it too).
+    public val voiceLevel: StateFlow<Float> = mutableLevel
 
     public fun onDoubleTap() {
         start { listenThenAnswer() }
@@ -76,6 +82,7 @@ public class Orchestrator(
                 turn()
             } finally {
                 face.setUserVoiceLevel(0f)
+                mutableLevel.value = 0f
                 if (job == coroutineContext[Job]) {
                     mutableState.value = AssistantState.Idle
                     face.setActivity(Activity.Idle)
@@ -85,6 +92,7 @@ public class Orchestrator(
     }
 
     private suspend fun listenThenAnswer() {
+        mutableHeard.value = ""
         mutableState.value = AssistantState.Listening
         face.setActivity(Activity.Listening)
         val heard = try {
@@ -106,7 +114,10 @@ public class Orchestrator(
         var heard: String? = null
         ears.listen().collect { event ->
             when (event) {
-                is HearingEvent.Level -> face.setUserVoiceLevel(event.level)
+                is HearingEvent.Level -> {
+                    face.setUserVoiceLevel(event.level)
+                    mutableLevel.value = event.level
+                }
                 is HearingEvent.Partial -> mutableHeard.value = event.text
                 is HearingEvent.Heard -> heard = event.text
                 HearingEvent.NothingHeard -> heard = null
@@ -122,6 +133,7 @@ public class Orchestrator(
         mutableHeard.value = text
         mutableState.value = AssistantState.Thinking
         face.setUserVoiceLevel(0f)
+        mutableLevel.value = 0f
         face.setActivity(Activity.Thinking)
         val sentences = Channel<ReplySentence>(Channel.UNLIMITED)
         val header = CompletableDeferred<Feeling>()
@@ -133,7 +145,9 @@ public class Orchestrator(
             coroutineScope {
                 val reading = launch {
                     try {
-                        brain.reply(conversation.history(clock()), text).collect { event ->
+                        val moment = context().trim()
+                        val asked = if (moment.isEmpty()) text else "[$moment]\n$text"
+                        brain.reply(conversation.history(clock()), asked).collect { event ->
                             when (event) {
                                 is BrainEvent.Header -> {
                                     face.setEmotion(event.feeling.signal())
