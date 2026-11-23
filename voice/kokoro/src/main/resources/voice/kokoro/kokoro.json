@@ -1,0 +1,34 @@
+{
+  "format": 1,
+  "voices": [
+    {
+      "id": "kokoro-v1_0-int8",
+      "name": "Kokoro v1.0 (int8)",
+      "language": "en",
+      "sampleRate": 24000,
+      "speakers": 54,
+      "quality": "high",
+      "default": true,
+      "license": {
+        "name": "Apache-2.0 (Kokoro-82M model and voices by hexgrad; English lexicons from misaki)",
+        "url": "https://huggingface.co/hexgrad/Kokoro-82M",
+        "attribution": "Kokoro-82M by hexgrad, packaged for sherpa-onnx by the k2-fsa project"
+      },
+      "archive": {
+        "download": {
+          "url": "https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/kokoro-int8-multi-lang-v1_0.tar.bz2",
+          "sha256": "72c347230107ef8a31098ec4d468a605244beef5f1ed00db97efa13518800653",
+          "size": 132353410
+        },
+        "files": {
+          "model.onnx": "kokoro-int8-multi-lang-v1_0/model.int8.onnx",
+          "voices.bin": "kokoro-int8-multi-lang-v1_0/voices.bin",
+          "tokens.txt": "kokoro-int8-multi-lang-v1_0/tokens.txt",
+          "lexicon-us-en.txt": "kokoro-int8-multi-lang-v1_0/lexicon-us-en.txt",
+          "lexicon-gb-en.txt": "kokoro-int8-multi-lang-v1_0/lexicon-gb-en.txt",
+          "LICENSE": "kokoro-int8-multi-lang-v1_0/LICENSE"
+        }
+      }
+    }
+  ]
+}

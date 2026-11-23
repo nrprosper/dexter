@@ -78,6 +78,7 @@ class MainActivity : ComponentActivity() {
         super.onStart()
         senses.start()
         assistant.voice.reloadPrefs()
+        assistant.voice.warmUp()
     }
 
     override fun onStop() {

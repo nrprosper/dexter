@@ -5,4 +5,5 @@
     <exclude domain="sharedpref" path="device.xml" />
     <exclude domain="sharedpref" path="assistant_secrets.xml" />
     <exclude domain="sharedpref" path="assistant_secrets_gemini.xml" />
+    <exclude domain="sharedpref" path="assistant_secrets_elevenlabs.xml" />
 </full-backup-content>

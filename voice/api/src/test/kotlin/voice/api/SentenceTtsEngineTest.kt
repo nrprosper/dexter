@@ -80,6 +80,24 @@ class SentenceTtsEngineTest {
     }
 
     @Test
+    fun quickStartOnlySplitsTheFirstSentence() = runBlocking {
+        val engine = object : SentenceTtsEngine() {
+            val said = ArrayList<String>()
+            override val id = "quick"
+            override val capabilities = EngineCapabilities(EngineLocation.Offline)
+            override val quickStartChars = 30
+            override suspend fun availability() = Availability.Ready
+            override suspend fun voices() = emptyList<VoiceDescriptor>()
+            override suspend fun synthesizeSentence(text: String, settings: SynthesisSettings): SentenceAudio {
+                said.add(text)
+                return SentenceAudio(ShortArray(10), 16_000)
+            }
+        }
+        engine.synthesize(TtsInput.Text("Okay so, the first sentence is quite long indeed. The second one, also long, stays whole.")).toList()
+        assertEquals(listOf("Okay so, the first sentence is quite long indeed.", "The second one, also long, stays whole."), engine.said)
+    }
+
+    @Test
     fun preparedTextIsWhatGetsSynthesized() = runBlocking {
         val engine = Counting()
         engine.synthesize(TtsInput.Text("I have 2 cats.")).toList()

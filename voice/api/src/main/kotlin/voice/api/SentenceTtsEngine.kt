@@ -17,17 +17,32 @@ public abstract class SentenceTtsEngine(private val splitter: SentenceSplitter =
     // Engines can rewrite a sentence before synthesis (number and symbol expansion, for example).
     protected open fun prepare(text: String): String = text
 
+    // When > 0, the first sentence of an utterance is split at a clause mark if longer than this, so a slow engine
+    // starts speaking sooner while the rest is made during playback.
+    protected open val quickStartChars: Int = 0
+
     override fun synthesize(input: TtsInput, settings: SynthesisSettings): Flow<PcmChunk> = flow {
         var position = 0L
-        sentences(input).collect { sentence ->
+        var first = true
+        sentences(input).collect { whole ->
+            val pieces = if (first) splitter.quickStart(whole, quickStartChars) else listOf(whole)
+            first = false
+            for (sentence in pieces) speak(sentence, settings, position)?.let {
+                emit(it)
+                position += it.samples.size
+            }
+        }
+    }
+
+    private suspend fun speak(sentence: Sentence, settings: SynthesisSettings, position: Long): PcmChunk? {
+        run {
             val text = prepare(sentence.text)
-            if (text.isBlank()) return@collect
+            if (text.isBlank()) return null
             currentCoroutineContext().ensureActive()
             val audio = synthesizeSentence(text, settings)
             currentCoroutineContext().ensureActive()
-            if (audio.samples.isEmpty()) return@collect
-            emit(PcmChunk(audio.samples, audio.sampleRate, position, sentence.range, audio.alignment, sentence.part))
-            position += audio.samples.size
+            if (audio.samples.isEmpty()) return null
+            return PcmChunk(audio.samples, audio.sampleRate, position, sentence.range, audio.alignment, sentence.part)
         }
     }
 

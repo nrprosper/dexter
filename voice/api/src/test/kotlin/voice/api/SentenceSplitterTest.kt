@@ -56,6 +56,17 @@ class SentenceSplitterTest {
     }
 
     @Test
+    fun quickStartCutsALongFirstSentenceAtItsFirstClause() {
+        val s = splitter.split("Well, here is a fairly long opening sentence, with a second clause that goes on and on.").single()
+        val pieces = splitter.quickStart(s, 40)
+        assertEquals(listOf("Well, here is a fairly long opening sentence,", "with a second clause that goes on and on."), pieces.map { it.text })
+        assertTrue(pieces.all { p -> p.text == "Well, here is a fairly long opening sentence, with a second clause that goes on and on.".substring(p.range.first, p.range.last + 1) })
+        assertEquals(listOf(s), splitter.quickStart(s, 0))
+        val short = splitter.split("Short one.").single()
+        assertEquals(listOf(short), splitter.quickStart(short, 40))
+    }
+
+    @Test
     fun streamMatchesWholeTextSplit() = runBlocking {
         val text = "Hello there. I am Dexter! Dr. Who? It costs 3.50, really... wow. Bye"
         val pieces = text.chunked(3)

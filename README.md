@@ -56,7 +56,7 @@ Dexter's face is a small character that feels alive on its own and reacts, playf
 - Double-tap while it talks to interrupt. If something goes wrong (no internet, no key, no microphone), Dexter says so with an "oops" instead of freezing.
 
 **A voice, with a mouth that keeps up**
-- Speaks offline with a [Piper](https://github.com/rhasspy/piper) voice running on the phone through [sherpa-onnx](https://github.com/k2-fsa/sherpa-onnx). No account, no cloud. If no voice is downloaded yet, it falls back to the phone's own text-to-speech.
+- Speaks with the phone's own natural Google voice out of the box, with [ElevenLabs](https://elevenlabs.io/) if you add your own key (studio-quality, online, any voice in your library), or with [Kokoro](https://huggingface.co/hexgrad/Kokoro-82M), an even more natural voice that runs fully offline on the phone after a one-time 132 MB download (Settings → Voice). [Piper](https://github.com/rhasspy/piper) is there too, through [sherpa-onnx](https://github.com/k2-fsa/sherpa-onnx).
 - The mouth follows the actual sound, not a fake loop: it closes between syllables (no flapping), rounds for "oo" and widens for "ee", and the brows and head punctuate emphasised words.
 - The tone changes the performance. Calm speech is gentle, excited speech bounces, serious speech holds still, and funny speech smirks and ends with a laugh. A happy face keeps smiling while it talks, and a worried face talks with restraint.
 - Interrupt it any time: the sound fades out in a few milliseconds and the mouth springs shut, with no click and no frozen open mouth.
@@ -94,6 +94,7 @@ Everything is playful, and the calmer personality reacts more mildly. No permiss
 - **To build:** JDK 17 or newer, the Android SDK with platform 37, and the included Gradle wrapper.
 - **Permissions:** only the microphone, asked the first time you double-tap to talk. The others are granted at install time: `DETECT_SCREEN_CAPTURE` (the face poses for screenshots), and `INTERNET` plus `ACCESS_NETWORK_STATE` (talking to Claude, downloading a voice).
 - **Talking to Dexter:** you need your own API key, either [Anthropic](https://console.anthropic.com/) (Claude) or [Google AI Studio](https://aistudio.google.com/) (Gemini, which has a free tier). Long-press the app icon, open **Settings**, choose the **Brain**, paste the key and tap **Save**, then **Check**. On Gemini's free tier Google may use your conversations to improve its products and human reviewers may read them, so don't share anything sensitive. The key is encrypted with a key held in the phone's secure keystore, never leaves the phone except to call the API, and is excluded from backups. The first double-tap asks for microphone permission.
+- **ElevenLabs (optional):** Settings → Voice → ElevenLabs, paste your key (encrypted like the others), pick a model and any voice from your library. Dexter's replies are then sent to ElevenLabs and use your credits; if it can't be reached, Dexter falls back to the phone's voice.
 - **Privacy:** what you say is turned into text on the phone (on-device recognition where available) and sent, with the recent conversation, to Anthropic to answer. The conversation is kept in memory only and forgotten after ten quiet minutes.
 - **Voice download:** the first time you pick the Piper voice, the app downloads about 27 MB (the voice and an English pronunciation dictionary) from the sherpa-onnx releases on GitHub, checks each file's checksum, and keeps it in app-private storage. Interrupted downloads resume. Nothing model-related is stored in this repository.
 
@@ -123,7 +124,9 @@ A debug install also adds a second app, **Face Playground**, for trying everythi
 | `:face:playground` | Android library (debug only) | The Face Playground tuning app |
 | `:voice:api` | Kotlin/JVM | The engine-agnostic TTS API: `TtsEngine`, audio chunks with optional timing, the engine router, sentence splitting, number and symbol spelling |
 | `:voice:piper` | Android library | Piper voices on sherpa-onnx, the voice list and the checked, resumable downloader |
-| `:voice:system` | Android library | The fallback to the phone's own text-to-speech |
+| `:voice:system` | Android library | The phone's own text-to-speech (the default voice) |
+| `:voice:elevenlabs` | Kotlin/JVM | ElevenLabs, the optional cloud voice |
+| `:voice:kokoro` | Android library | Kokoro, the optional natural offline voice, with 28 English speakers |
 | `:voice:speaker` | Android library | `Speaker`: text in, voice and moving mouth out |
 | `:assistant:core` | Kotlin/JVM | The conversation loop (listen, think, speak), the reply format and its streaming parser |
 | `:assistant:claude` | Kotlin/JVM | Claude as Dexter's brain, through the official Anthropic Java SDK |

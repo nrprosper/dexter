@@ -15,6 +15,9 @@ public interface TtsEngine {
 
     // Called on stop, from any thread, alongside cancelling the collector: drop in-flight work early if the engine can.
     public fun interrupt() {}
+
+    // Loads whatever the first sentence would otherwise wait for (an on-device model), ahead of time. Optional.
+    public suspend fun warmUp(settings: SynthesisSettings) {}
 }
 
 public sealed interface TtsInput {
