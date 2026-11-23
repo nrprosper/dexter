@@ -88,6 +88,12 @@ public class AudioTrackSink(context: Context) : AudioSink {
         }
     }
 
+    override fun underruns(): Int = try {
+        track?.underrunCount ?: -1
+    } catch (_: IllegalStateException) {
+        -1
+    }
+
     override suspend fun drain(writtenFrames: Long, timeoutMillis: Long, stopped: () -> Boolean): Boolean {
         val t = track ?: return true
         var waited = 0L

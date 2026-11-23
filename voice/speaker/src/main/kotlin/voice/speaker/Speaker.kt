@@ -20,6 +20,10 @@ import voice.api.TtsEngine
 import voice.api.TtsInput
 import voice.api.TtsRouter
 
+// Last utterance: worst sentence synthesis time vs its audio length (> 1 means the voice can't keep up: gaps),
+// and playback underruns (cuts). -1 when unknown.
+public data class SpeechStats(val sentences: Int = 0, val worstRealTime: Float = 0f, val underruns: Int = -1)
+
 public sealed interface SpeakerState {
     public data object Idle : SpeakerState
     public data class Preparing(val engineId: String) : SpeakerState
@@ -41,6 +45,8 @@ public class Speaker(
     public val state: StateFlow<SpeakerState> = mutableState
 
     private var job: Job? = null
+    private val mutableStats = MutableStateFlow(SpeechStats())
+    public val stats: StateFlow<SpeechStats> = mutableStats
 
     // Which input part (TtsInput.Sentences index) is being heard now; -1 when nothing is playing.
     public val heardPart: StateFlow<Int> get() = player.heardTag
@@ -99,11 +105,22 @@ public class Speaker(
             val chosen = use.engine
             engine = chosen
             mutableState.value = SpeakerState.Preparing(chosen.id)
-            val blocks = chosen.synthesize(input, settings.copy(voiceId = use.voiceId))
-                .map { PcmBlock(it.samples, it.sampleRate, it.part) }
+            var last = System.nanoTime()
+            var count = 0
+            var worst = 0f
+            val blocks = chosen.synthesize(input, settings.copy(voiceId = use.voiceId ?: settings.voiceId))
+                .map {
+                    val now = System.nanoTime()
+                    val audioNanos = it.samples.size * NANOS_PER_SECOND / it.sampleRate
+                    if (audioNanos > 0) worst = maxOf(worst, (now - last).toFloat() / audioNanos)
+                    last = now
+                    count++
+                    PcmBlock(it.samples, it.sampleRate, it.part)
+                }
                 .buffer(LOOKAHEAD_SENTENCES)
             try {
                 playBlocks(chosen.id, blocks, style)
+                mutableStats.value = SpeechStats(count, worst, player.lastUnderruns)
                 mutableState.value = SpeakerState.Idle
                 return
             } catch (e: CancellationException) {
@@ -153,5 +170,6 @@ public class Speaker(
     private companion object {
         const val PCM = "pcm"
         const val LOOKAHEAD_SENTENCES = 2
+        const val NANOS_PER_SECOND = 1_000_000_000L
     }
 }

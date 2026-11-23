@@ -4,6 +4,7 @@ import android.content.Context
 import android.os.Bundle
 import android.speech.tts.TextToSpeech
 import android.speech.tts.UtteranceProgressListener
+import android.speech.tts.Voice
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.sync.Mutex
@@ -17,7 +18,9 @@ import voice.api.SentenceTtsEngine
 import voice.api.SynthesisSettings
 import voice.api.TtsException
 import voice.api.VoiceDescriptor
+import voice.api.VoiceQuality
 import java.io.File
+import java.util.Locale
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicLong
 
@@ -41,9 +44,24 @@ public class SystemTtsEngine(context: Context) : SentenceTtsEngine() {
     override suspend fun voices(): List<VoiceDescriptor> {
         val t = engine() ?: return emptyList()
         val voices = withContext(Dispatchers.Main) { runCatching { t.voices }.getOrNull().orEmpty() }
-        return voices.filter { !it.isNetworkConnectionRequired }
-            .sortedBy { it.name }
-            .map { VoiceDescriptor(it.name, ID, it.name, it.locale.toLanguageTag(), sampleRate = 0, license = "System voice") }
+        val language = Locale.getDefault().language
+        return voices.filter { !it.isNetworkConnectionRequired && !it.features.orEmpty().contains(NOT_INSTALLED) }
+            .sortedWith(compareBy({ it.locale.language != language }, { it.locale.language != "en" }, { -it.quality }, { it.latency }, { it.name }))
+            .map {
+                VoiceDescriptor(
+                    id = it.name,
+                    engineId = ID,
+                    name = it.name,
+                    language = it.locale.toLanguageTag(),
+                    sampleRate = 0,
+                    quality = when {
+                        it.quality >= Voice.QUALITY_HIGH -> VoiceQuality.High
+                        it.quality >= Voice.QUALITY_NORMAL -> VoiceQuality.Medium
+                        else -> VoiceQuality.Low
+                    },
+                    license = "System voice",
+                )
+            }
     }
 
     override suspend fun synthesizeSentence(text: String, settings: SynthesisSettings): SentenceAudio {
@@ -55,8 +73,10 @@ public class SystemTtsEngine(context: Context) : SentenceTtsEngine() {
         pending[utterance] = done
         try {
             withContext(Dispatchers.Main) {
-                settings.voiceId?.let { wanted -> t.voices?.firstOrNull { it.name == wanted }?.let { t.voice = it } }
+                val chosen = settings.voiceId?.let { wanted -> t.voices?.firstOrNull { it.name == wanted } } ?: best(t)
+                if (chosen != null && t.voice?.name != chosen.name) t.voice = chosen
                 t.setSpeechRate(settings.speed)
+                t.setPitch(settings.pitch)
                 if (t.synthesizeToFile(text, Bundle(), file, utterance) != TextToSpeech.SUCCESS) done.complete(false)
             }
             if (!done.await()) throw TtsException("system TTS failed on: $text")
@@ -70,6 +90,18 @@ public class SystemTtsEngine(context: Context) : SentenceTtsEngine() {
             file.delete()
         }
     }
+
+    // The best installed offline voice for the phone's language (English otherwise): highest quality, then lowest latency.
+    private fun best(t: TextToSpeech): Voice? {
+        bestVoice?.let { return it }
+        val all = runCatching { t.voices }.getOrNull().orEmpty()
+            .filter { !it.isNetworkConnectionRequired && !it.features.orEmpty().contains(NOT_INSTALLED) }
+        val language = Locale.getDefault().language
+        val pool = all.filter { it.locale.language == language }.ifEmpty { all.filter { it.locale.language == "en" } }.ifEmpty { all }
+        return pool.sortedWith(compareBy({ -it.quality }, { it.latency })).firstOrNull()?.also { bestVoice = it }
+    }
+
+    private var bestVoice: Voice? = null
 
     public suspend fun close() {
         withContext(Dispatchers.Main) {
@@ -118,5 +150,6 @@ public class SystemTtsEngine(context: Context) : SentenceTtsEngine() {
 
     public companion object {
         public const val ID: String = "system"
+        private const val NOT_INSTALLED = TextToSpeech.Engine.KEY_FEATURE_NOT_INSTALLED
     }
 }

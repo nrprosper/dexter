@@ -13,6 +13,9 @@ public interface AudioSink {
     // Frames played so far, from any thread (coarser than playedFrames, no extrapolation); -1 if unknown.
     public fun headFrames(): Long
 
+    // How many times playback ran dry so far (-1 if unknown).
+    public fun underruns(): Int = -1
+
     // Lets queued audio play out; true once it has, false when stopped() turned true or timeoutMillis passed.
     public suspend fun drain(writtenFrames: Long, timeoutMillis: Long, stopped: () -> Boolean): Boolean
 

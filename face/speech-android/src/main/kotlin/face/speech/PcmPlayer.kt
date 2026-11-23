@@ -19,6 +19,7 @@ import kotlin.math.min
 // tag is the caller's label for the block (a sentence index); heardTag reports it once the block is audible.
 public class PcmBlock(public val samples: ShortArray, public val sampleRate: Int, public val tag: Int = -1)
 
+// Blocks are shaped in place (soft limiter, edge fades) before playing, so callers hand over ownership of the samples.
 // The one player every engine feeds. Each block is analysed into the envelope just before it is written,
 // so the envelope is always ahead of what is heard. One utterance at a time; stop() works from any thread.
 public class PcmPlayer(
@@ -35,6 +36,11 @@ public class PcmPlayer(
     public val track: AmplitudeSpeechTrack = AmplitudeSpeechTrack(envelope)
 
     private val heard = MutableStateFlow(-1)
+
+    // Buffer underruns during the last utterance (-1 if the sink can't tell): gaps heard as cuts.
+    @Volatile
+    public var lastUnderruns: Int = -1
+        private set
 
     // The tag of the block being heard now (-1 before the first one plays, and after playback ends).
     public val heardTag: StateFlow<Int> = heard
@@ -73,6 +79,7 @@ public class PcmPlayer(
                         tags[n] = block.tag
                         tagged.set(n + 1)
                     }
+                    BlockShaping.shape(block.samples, block.sampleRate)
                     written += write(s, block.samples, stopped)
                 }
                 val s = sink
@@ -86,6 +93,7 @@ public class PcmPlayer(
                 heard.value = -1
                 track.end()
                 sink?.let {
+                    lastUnderruns = it.underruns()
                     if (!finished) it.fadeOutAndFlush()
                     it.close()
                 }
