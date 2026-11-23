@@ -1,5 +1,7 @@
 package voice.piper
 
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.runBlocking
 import org.apache.commons.compress.archivers.tar.TarArchiveEntry
@@ -88,6 +90,19 @@ class VoiceStoreTest {
             assertArrayEquals(lexicon, store.assetFile("lexicon")!!.readBytes())
             store.delete("test-voice")
             assertFalse(store.isInstalled("test-voice"))
+        }
+    }
+
+    @Test
+    fun concurrentInstallsDoNotCorruptTheDownload() {
+        TestServer().use { server ->
+            val store = VoiceStore(tmp.newFolder("app"), manifest(server), { Connectivity.Unmetered })
+            runBlocking {
+                val jobs = List(4) { async(Dispatchers.IO) { store.install("test-voice").toList().last() } }
+                for (j in jobs) assertEquals(InstallState.Installed, j.await())
+            }
+            assertTrue(store.isInstalled("test-voice"))
+            assertArrayEquals(lexicon, store.assetFile("lexicon")!!.readBytes())
         }
     }
 

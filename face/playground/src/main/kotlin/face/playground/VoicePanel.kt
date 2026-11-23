@@ -56,6 +56,7 @@ internal fun VoicePanel(voice: VoiceStack, engine: FaceEngine) {
     var style by remember { mutableStateOf(STYLES.first()) }
     var wifiOnly by remember { mutableStateOf(!voice.allowMeteredDownloads) }
     var download by remember { mutableStateOf("") }
+    var downloading by remember { mutableStateOf(false) }
     var installed by remember { mutableIntStateOf(0) }
     var offset by remember { mutableFloatStateOf(voice.syncOffsetMillis.toFloat()) }
     var lead by remember { mutableFloatStateOf(voice.leadMillis.toFloat()) }
@@ -80,7 +81,8 @@ internal fun VoicePanel(voice: VoiceStack, engine: FaceEngine) {
                         useSystem = false
                         voiceId = v.id
                         voice.voiceId = v.id
-                        if (!ready) {
+                        if (!ready && !downloading) {
+                            downloading = true
                             scope.launch {
                                 try {
                                     voice.store.install(v.id).collect { s ->
@@ -93,6 +95,8 @@ internal fun VoicePanel(voice: VoiceStack, engine: FaceEngine) {
                                     installed++
                                 } catch (e: Exception) {
                                     download = "download stopped: ${e.message}"
+                                } finally {
+                                    downloading = false
                                 }
                             }
                         }

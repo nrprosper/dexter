@@ -2,10 +2,13 @@ package voice.piper.model
 
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.channels.ProducerScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.buffer
 import kotlinx.coroutines.flow.channelFlow
 import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import voice.api.Connectivity
 import java.io.File
 import java.io.IOException
@@ -29,6 +32,7 @@ public class VoiceStore(
     private val voicesDir = File(root, "voices")
     private val assetsDir = File(root, "assets")
     private val downloadsDir = File(root, "downloads")
+    private val installLock = Mutex()
 
     // Wi-Fi (unmetered) only unless the user allows mobile data.
     @Volatile
@@ -49,11 +53,17 @@ public class VoiceStore(
     public fun assetFile(assetId: String): File? = manifest.asset(assetId)?.let { File(assetsDir, it.file) }
 
     // Progress is conflated: a slow collector sees the latest state, and always the final Installed.
+    // One install at a time: concurrent calls would append to the same partial files.
     public fun install(voiceId: String): Flow<InstallState> = channelFlow {
         val voice = manifest.voice(voiceId) ?: throw IllegalArgumentException("unknown voice $voiceId")
+        installLock.withLock { installLocked(voice) }
+    }.buffer(Channel.CONFLATED).flowOn(Dispatchers.IO)
+
+    private suspend fun ProducerScope<InstallState>.installLocked(voice: VoiceEntry) {
+        val voiceId = voice.id
         if (isInstalled(voiceId)) {
             send(InstallState.Installed)
-            return@channelFlow
+            return
         }
         checkNetwork()
         for (assetId in voice.requires) {
@@ -74,7 +84,7 @@ public class VoiceStore(
         if (!staging.renameTo(dir)) throw IOException("could not move voice $voiceId into place")
         archive.delete()
         send(InstallState.Installed)
-    }.buffer(Channel.CONFLATED).flowOn(Dispatchers.IO)
+    }
 
     public fun delete(voiceId: String) {
         voiceDir(voiceId).deleteRecursively()
