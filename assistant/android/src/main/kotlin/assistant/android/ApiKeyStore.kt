@@ -93,7 +93,8 @@ public class ApiKeyStore(context: Context, public val provider: BrainProvider = 
         private const val PREFIX = "sk-ant-"
         private const val HINT_CHARS = 4
         private val ANTHROPIC = Regex("^sk-ant-[A-Za-z0-9_-]{20,}$")
-        private val GOOGLE = Regex("^[A-Za-z0-9_-]{30,}$")
+        // Google has changed its key format over time: accept any printable key without spaces.
+        private val GOOGLE = Regex("^[\\x21-\\x7E]{20,256}$")
 
         // Claude keeps the original file name, so keys saved before Gemini existed still load.
         private fun file(provider: BrainProvider): String = if (provider == BrainProvider.Claude) FILE else FILE + "_" + provider.id

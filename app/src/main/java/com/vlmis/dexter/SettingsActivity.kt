@@ -255,7 +255,7 @@ class SettingsActivity : ComponentActivity() {
                     },
                     Modifier.weight(1f),
                     primary = true,
-                    enabled = ApiKeyStore.isPlausible(currentProvider(), entry),
+                    enabled = entry.isNotBlank(),
                 )
                 GlassButton(
                     "Check",
