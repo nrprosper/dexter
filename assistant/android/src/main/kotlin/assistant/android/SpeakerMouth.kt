@@ -1,6 +1,7 @@
 package assistant.android
 
 import assistant.core.Mouth
+import assistant.core.Prosody
 import assistant.core.ReplySentence
 import face.api.SpeechStyle
 import kotlinx.coroutines.coroutineScope
@@ -25,7 +26,9 @@ public class SpeakerMouth(private val speaker: Speaker, private val settings: ()
                     }
                 }
             }
-            val job = speaker.say(TtsInput.Sentences(sentences.map { it.text }), settings(), style)
+            val base = settings()
+            val tuned = base.copy(speed = base.speed * Prosody.speed(style), pitch = base.pitch * Prosody.pitch(style))
+            val job = speaker.say(TtsInput.Sentences(sentences.map { it.text }), tuned, style)
             try {
                 job.join()
             } finally {
