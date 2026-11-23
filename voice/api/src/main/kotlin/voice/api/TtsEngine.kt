@@ -12,6 +12,9 @@ public interface TtsEngine {
     public suspend fun voices(): List<VoiceDescriptor>
 
     public fun synthesize(input: TtsInput, settings: SynthesisSettings = SynthesisSettings()): Flow<PcmChunk>
+
+    // Called on stop, from any thread, alongside cancelling the collector: drop in-flight work early if the engine can.
+    public fun interrupt() {}
 }
 
 public sealed interface TtsInput {

@@ -76,8 +76,8 @@ public class PiperEngine(private val store: VoiceStore, private val threads: Int
         SentenceAudio(toPcm16(audio.samples), audio.sampleRate)
     }
 
-    // Asks a sentence in progress to stop at its next callback; also call before dropping a synthesis.
-    public fun cancelCurrent() {
+    // Asks a sentence in progress to stop at its next sherpa-onnx callback.
+    override fun interrupt() {
         cancelled.set(true)
     }
 
