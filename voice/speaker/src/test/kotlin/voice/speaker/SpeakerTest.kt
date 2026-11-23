@@ -67,6 +67,7 @@ class SpeakerTest {
             return length
         }
         override fun playedFrames(nowNanos: Long): Long = 0
+        override fun headFrames(): Long = 0
         override suspend fun drain(writtenFrames: Long, timeoutMillis: Long, stopped: () -> Boolean) = !stopped()
         override fun fadeOutAndFlush() { flushed = true }
         override fun close() = Unit

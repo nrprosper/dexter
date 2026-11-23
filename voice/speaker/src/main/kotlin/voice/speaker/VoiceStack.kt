@@ -16,7 +16,7 @@ import voice.system.SystemTtsEngine
 // The composition root for speech: engines (Piper first, the system voice as fallback), router, player and Speaker.
 // A future engine (Kokoro, ElevenLabs) is added to `engines` here; the face, player and Speaker don't change.
 // User settings (sync offset, lead, voice, Wi-Fi-only) are kept in SharedPreferences.
-public class VoiceStack(context: Context, face: FaceController, scope: CoroutineScope) {
+public class VoiceStack(context: Context, face: FaceController, scope: CoroutineScope, manageActivity: Boolean = true) {
     private val app = context.applicationContext
     private val prefs = app.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
 
@@ -26,7 +26,7 @@ public class VoiceStack(context: Context, face: FaceController, scope: Coroutine
     public val system: SystemTtsEngine = SystemTtsEngine(app)
     public val router: TtsRouter = TtsRouter(listOf(piper, system), RoutingPolicy(), connectivity)
     public val player: PcmPlayer = PcmPlayer({ AudioTrackSink(app) })
-    public val speaker: Speaker = Speaker(router, player, face, scope)
+    public val speaker: Speaker = Speaker(router, player, face, scope, manageActivity)
 
     public var syncOffsetMillis: Int
         get() = player.track.syncOffsetMillis
@@ -56,6 +56,11 @@ public class VoiceStack(context: Context, face: FaceController, scope: Coroutine
         }
 
     init {
+        reloadPrefs()
+    }
+
+    // Picks up changes made elsewhere (a settings screen) to the saved sync offset, lead and download policy.
+    public fun reloadPrefs() {
         player.track.syncOffsetMillis = prefs.getInt(SYNC_OFFSET, 0)
         player.track.leadMillis = prefs.getInt(LEAD, AmplitudeSpeechTrack.DEFAULT_LEAD_MILLIS)
         store.allowMetered = prefs.getBoolean(METERED, false)

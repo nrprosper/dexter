@@ -32,7 +32,6 @@ public class VoiceStore(
     private val voicesDir = File(root, "voices")
     private val assetsDir = File(root, "assets")
     private val downloadsDir = File(root, "downloads")
-    private val installLock = Mutex()
 
     // Wi-Fi (unmetered) only unless the user allows mobile data.
     @Volatile
@@ -101,5 +100,8 @@ public class VoiceStore(
 
     private companion object {
         const val MARKER = ".installed"
+
+        // Process-wide: the app and its settings screen may each hold a VoiceStore over the same files.
+        val installLock = Mutex()
     }
 }

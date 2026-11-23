@@ -32,6 +32,8 @@ internal class FakeSink(private val clock: () -> Long = { System.nanoTime() }) :
         return length
     }
 
+    override fun headFrames(): Long = playedFrames(clock())
+
     override fun playedFrames(nowNanos: Long): Long =
         if (nowNanos < startNanos) -1 else (nowNanos - startNanos) * rate / 1_000_000_000L
 

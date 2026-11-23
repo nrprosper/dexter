@@ -42,6 +42,9 @@ public class Speaker(
 
     private var job: Job? = null
 
+    // Which input part (TtsInput.Sentences index) is being heard now; -1 when nothing is playing.
+    public val heardPart: StateFlow<Int> get() = player.heardTag
+
     @Volatile
     private var engine: TtsEngine? = null
 
@@ -97,7 +100,7 @@ public class Speaker(
             engine = chosen
             mutableState.value = SpeakerState.Preparing(chosen.id)
             val blocks = chosen.synthesize(input, settings.copy(voiceId = use.voiceId))
-                .map { PcmBlock(it.samples, it.sampleRate) }
+                .map { PcmBlock(it.samples, it.sampleRate, it.part) }
                 .buffer(LOOKAHEAD_SENTENCES)
             try {
                 playBlocks(chosen.id, blocks, style)
