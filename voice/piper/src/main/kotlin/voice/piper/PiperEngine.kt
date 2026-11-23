@@ -33,6 +33,7 @@ public class PiperEngine(private val store: VoiceStore, private val threads: Int
     private var lexicon: Lexicon? = null
     private var lexiconPath = ""
     private val cancelled = AtomicBoolean(false)
+    private val stopCheck = StopCheck(cancelled)
 
     override val id: String = ID
     override val capabilities: EngineCapabilities = EngineCapabilities(EngineLocation.Offline, streamingOutput = true)
@@ -69,7 +70,7 @@ public class PiperEngine(private val store: VoiceStore, private val threads: Int
         cancelled.set(false)
         val config = GenerationConfig(speed = settings.speed, sid = settings.speakerId)
         val audio = try {
-            tts.generateWithConfigAndCallback(text, config) { if (cancelled.get()) 0 else 1 }
+            tts.generateWithConfigAndCallback(text, config, stopCheck)
         } catch (e: RuntimeException) {
             throw TtsException("piper failed on: $text", e)
         }
@@ -125,6 +126,12 @@ public class PiperEngine(private val store: VoiceStore, private val threads: Int
 
     private fun toPcm16(samples: FloatArray): ShortArray =
         ShortArray(samples.size) { (samples[it] * FULL_SCALE).toInt().coerceIn(-32_768, 32_767).toShort() }
+
+    // sherpa-onnx's JNI looks the callback up as invoke(float[]): Integer, which a Kotlin lambda doesn't have;
+    // a class implementing the function type does. Returning 0 asks sherpa-onnx to stop.
+    internal class StopCheck(private val cancelled: AtomicBoolean) : (FloatArray) -> Int {
+        override fun invoke(samples: FloatArray): Int = if (cancelled.get()) 0 else 1
+    }
 
     public companion object {
         public const val ID: String = "piper"
