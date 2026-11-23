@@ -8,6 +8,7 @@ import face.speech.PcmPlayer
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.buffer
@@ -58,6 +59,25 @@ public class Speaker(
         return next
     }
 
+    // Raw PCM (test signals, earcons) through the same player and face path as speech.
+    public fun play(pcm: Flow<PcmBlock>, style: SpeechStyle = SpeechStyle()): Job {
+        val previous = job
+        stop()
+        val next = scope.launch {
+            previous?.join()
+            mutableState.value = SpeakerState.Preparing(PCM)
+            try {
+                playBlocks(PCM, pcm, style)
+                mutableState.value = SpeakerState.Idle
+            } catch (e: CancellationException) {
+                mutableState.value = SpeakerState.Idle
+                throw e
+            }
+        }
+        job = next
+        return next
+    }
+
     public fun stop() {
         engine?.interrupt()
         player.stop()
@@ -76,39 +96,59 @@ public class Speaker(
             val chosen = use.engine
             engine = chosen
             mutableState.value = SpeakerState.Preparing(chosen.id)
-            var started = false
+            val blocks = chosen.synthesize(input, settings.copy(voiceId = use.voiceId))
+                .map { PcmBlock(it.samples, it.sampleRate) }
+                .buffer(LOOKAHEAD_SENTENCES)
             try {
-                val blocks = chosen.synthesize(input, settings.copy(voiceId = use.voiceId))
-                    .map { PcmBlock(it.samples, it.sampleRate) }
-                    .buffer(LOOKAHEAD_SENTENCES)
-                player.play(blocks) {
-                    started = true
-                    face.attachSpeech(player.track, style)
-                    if (manageActivity) face.setActivity(Activity.Speaking)
-                    mutableState.value = SpeakerState.Speaking(chosen.id)
-                }
+                playBlocks(chosen.id, blocks, style)
                 mutableState.value = SpeakerState.Idle
                 return
             } catch (e: CancellationException) {
                 mutableState.value = SpeakerState.Idle
                 throw e
+            } catch (e: StartedFailure) {
+                mutableState.value = SpeakerState.Failed("${chosen.id}: ${e.cause?.message}")
+                return
             } catch (e: Exception) {
-                if (started || input !is TtsInput.Text) {
+                if (input !is TtsInput.Text) {
                     mutableState.value = SpeakerState.Failed("${chosen.id}: ${e.message}")
                     return
                 }
                 tried += chosen.id
             } finally {
                 engine = null
-                if (started) {
-                    face.detachSpeech()
-                    if (manageActivity) face.setActivity(Activity.Idle)
-                }
             }
         }
     }
 
+    // Returns whether any audio started. A failure after audio started is wrapped, so it isn't retried elsewhere.
+    private suspend fun playBlocks(source: String, blocks: Flow<PcmBlock>, style: SpeechStyle): Boolean {
+        var started = false
+        try {
+            player.play(blocks) {
+                started = true
+                face.attachSpeech(player.track, style)
+                if (manageActivity) face.setActivity(Activity.Speaking)
+                mutableState.value = SpeakerState.Speaking(source)
+            }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            if (started) throw StartedFailure(e)
+            throw e
+        } finally {
+            if (started) {
+                face.detachSpeech()
+                if (manageActivity) face.setActivity(Activity.Idle)
+            }
+        }
+        return started
+    }
+
+    private class StartedFailure(cause: Exception) : Exception(cause)
+
     private companion object {
+        const val PCM = "pcm"
         const val LOOKAHEAD_SENTENCES = 2
     }
 }
