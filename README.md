@@ -50,6 +50,11 @@ Dexter's face is a small character that feels alive on its own and reacts, playf
 - Natural blinks, glances with purpose, breathing, and small idle moves, all with a limit so it never fidgets.
 - Gets drowsy and falls asleep when left alone; a tap wakes it up.
 
+**A conversation partner**
+- Double-tap the face and talk. Dexter listens (and nods along), thinks, then answers out loud with [Claude](https://www.anthropic.com/claude).
+- Claude picks how Dexter feels about each answer, its tone, and optional stage directions per sentence (step left, come closer, hop, peek). The face changes before the voice starts, and the engine performs the moves with its own springs, so it always stays in character.
+- Double-tap while it talks to interrupt. If something goes wrong (no internet, no key, no microphone), Dexter says so with an "oops" instead of freezing.
+
 **A voice, with a mouth that keeps up**
 - Speaks offline with a [Piper](https://github.com/rhasspy/piper) voice running on the phone through [sherpa-onnx](https://github.com/k2-fsa/sherpa-onnx). No account, no cloud. If no voice is downloaded yet, it falls back to the phone's own text-to-speech.
 - The mouth follows the actual sound, not a fake loop: it closes between syllables (no flapping), rounds for "oo" and widens for "ee", and the brows and head punctuate emphasised words.
@@ -87,7 +92,9 @@ Everything is playful, and the calmer personality reacts more mildly. No permiss
 
 - **To run:** an Android phone with Android 12 (API 31) or newer. Developed and tested on Android 16.
 - **To build:** JDK 17 or newer, the Android SDK with platform 37, and the included Gradle wrapper.
-- **Permissions:** none to grant. The declared permissions are granted at install time: `DETECT_SCREEN_CAPTURE` (the face poses for screenshots), and `INTERNET` plus `ACCESS_NETWORK_STATE` (downloading a voice, Wi-Fi only by default).
+- **Permissions:** only the microphone, asked the first time you double-tap to talk. The others are granted at install time: `DETECT_SCREEN_CAPTURE` (the face poses for screenshots), and `INTERNET` plus `ACCESS_NETWORK_STATE` (talking to Claude, downloading a voice).
+- **Talking to Dexter:** you need your own [Anthropic API key](https://console.anthropic.com/). Long-press the app icon, open **Settings**, paste the key and tap **Save**, then **Check**. The key is encrypted with a key held in the phone's secure keystore, never leaves the phone except to call the API, and is excluded from backups. The first double-tap asks for microphone permission.
+- **Privacy:** what you say is turned into text on the phone (on-device recognition where available) and sent, with the recent conversation, to Anthropic to answer. The conversation is kept in memory only and forgotten after ten quiet minutes.
 - **Voice download:** the first time you pick the Piper voice, the app downloads about 27 MB (the voice and an English pronunciation dictionary) from the sherpa-onnx releases on GitHub, checks each file's checksum, and keeps it in app-private storage. Interrupted downloads resume. Nothing model-related is stored in this repository.
 
 ## Getting started
@@ -118,6 +125,9 @@ A debug install also adds a second app, **Face Playground**, for trying everythi
 | `:voice:piper` | Android library | Piper voices on sherpa-onnx, the voice list and the checked, resumable downloader |
 | `:voice:system` | Android library | The fallback to the phone's own text-to-speech |
 | `:voice:speaker` | Android library | `Speaker`: text in, voice and moving mouth out |
+| `:assistant:core` | Kotlin/JVM | The conversation loop (listen, think, speak), the reply format and its streaming parser |
+| `:assistant:claude` | Kotlin/JVM | Claude as Dexter's brain, through the official Anthropic Java SDK |
+| `:assistant:android` | Android library | Speech recognition, the encrypted API key store, and the wiring |
 
 Dependencies flow `api ← core ← render-compose ← app`; the voice modules only meet the face in `:voice:speaker`. New voices (a higher-quality offline model, a cloud voice) plug in as another `TtsEngine` without touching the face or the player. The face engine is deterministic (seeded randomness, time passed in) and frame-rate independent, so its behaviour is covered by fast JVM tests.
 
@@ -150,9 +160,9 @@ Expressions, personalities and the mouth's speech tuning (`face/speech/mouth.jso
 
 ## Upcoming
 
-- **The assistant itself:** real conversations, with the AI choosing the feeling and tone of each answer and the face choosing the performance.
 - **Power and polish:** battery-friendly modes that pause the animation when nothing moves, a reduced-motion mode, screen burn-in protection, and smoother first seconds after launch.
 - **More voices:** an optional higher-quality offline voice (Kokoro) and, later, a cloud voice.
+- **Hands-free:** a "Hey Dexter" wake word, on the phone.
 - **Later ideas:** precise lip-sync from speech sounds, reacting to claps and music through the microphone (opt-in), looking at you through the front camera (opt-in), and a personality that slowly grows with you.
 
 ## Licenses

@@ -12,6 +12,15 @@ Dexter uses the open-source libraries and data listed here. Each keeps its own l
 | [Apache Commons IO](https://commons.apache.org/proper/commons-io/) (via Commons Compress) | 2.20.0 | [Apache-2.0](https://www.apache.org/licenses/LICENSE-2.0) | Dependency of Commons Compress |
 | [Apache Commons Codec](https://commons.apache.org/proper/commons-codec/) (via Commons Compress) | 1.19.0 | [Apache-2.0](https://www.apache.org/licenses/LICENSE-2.0) | Dependency of Commons Compress |
 | [Apache Commons Lang](https://commons.apache.org/proper/commons-lang/) (via Commons Compress) | 3.18.0 | [Apache-2.0](https://www.apache.org/licenses/LICENSE-2.0) | Dependency of Commons Compress |
+| [Anthropic Java SDK](https://github.com/anthropics/anthropic-sdk-java) (`anthropic-java`, core and OkHttp client) | 3.6.0 | [Apache-2.0](https://github.com/anthropics/anthropic-sdk-java/blob/main/LICENSE) | Talking to Claude (`:assistant:claude`) |
+| [OkHttp](https://github.com/square/okhttp) and [Okio](https://github.com/square/okio) (via the Anthropic SDK) | 4.12.0 / 3.6.0 | [Apache-2.0](https://www.apache.org/licenses/LICENSE-2.0) | HTTP client |
+| [Jackson](https://github.com/FasterXML/jackson) core, databind, annotations, jdk8, jsr310, Kotlin module, and [classmate](https://github.com/FasterXML/java-classmate) (via the Anthropic SDK) | 2.19.4 / 1.7.0 | [Apache-2.0](https://www.apache.org/licenses/LICENSE-2.0) | JSON |
+| [victools jsonschema-generator](https://github.com/victools/jsonschema-generator) and modules (via the Anthropic SDK) | 4.38.0 | [Apache-2.0](https://www.apache.org/licenses/LICENSE-2.0) | Schema support in the SDK |
+| [Swagger annotations](https://github.com/swagger-api/swagger-core) (via the Anthropic SDK) | 2.2.50 | [Apache-2.0](https://www.apache.org/licenses/LICENSE-2.0) | Annotations used by the SDK |
+| [OpenTelemetry API](https://github.com/open-telemetry/opentelemetry-java) (via the Anthropic SDK) | 1.62.0 | [Apache-2.0](https://www.apache.org/licenses/LICENSE-2.0) | Optional tracing hooks in the SDK (unused) |
+| [Standard Webhooks](https://github.com/standard-webhooks/standard-webhooks) (via the Anthropic SDK) | 1.2.0 | [MIT](https://github.com/standard-webhooks/standard-webhooks/blob/main/LICENSE) | Bundled by the SDK (unused) |
+| [SLF4J API](https://www.slf4j.org/) (via the Anthropic SDK) | 2.0.16 | [MIT](https://www.slf4j.org/license.html) | Logging facade (no logger bound) |
+| [Kotlin reflect](https://github.com/JetBrains/kotlin) (via Jackson's Kotlin module) | 1.9.25 | [Apache-2.0](https://github.com/JetBrains/kotlin/blob/master/license/LICENSE.txt) | Reflection for Jackson |
 | [Kotlin standard library](https://github.com/JetBrains/kotlin) | 2.2.10 | [Apache-2.0](https://github.com/JetBrains/kotlin/blob/master/license/LICENSE.txt) | Language runtime |
 | [kotlinx.coroutines](https://github.com/Kotlin/kotlinx.coroutines) | 1.9.0 | [Apache-2.0](https://github.com/Kotlin/kotlinx.coroutines/blob/master/LICENSE.txt) | Concurrency, flows |
 | [kotlinx.serialization](https://github.com/Kotlin/kotlinx.serialization) | 1.9.0 | [Apache-2.0](https://github.com/Kotlin/kotlinx.serialization/blob/master/LICENSE.txt) | Expression, personality, mouth and voice-manifest JSON |
@@ -35,6 +44,7 @@ The archive the voice comes in also contains eSpeak NG data (GPL-3.0-or-later). 
 | Component | License |
 | --- | --- |
 | [JUnit 4](https://junit.org/junit4/) and [JUnit 5](https://junit.org/junit5/) | EPL-1.0 / EPL-2.0 |
+| [kotlinx-coroutines-test](https://github.com/Kotlin/kotlinx.coroutines) | Apache-2.0 |
 | [Paparazzi](https://github.com/cashapp/paparazzi) (screenshot tests) | Apache-2.0 |
 | [gitleaks](https://github.com/gitleaks/gitleaks) 8.30.1 (secret scan in GitHub Actions) | MIT |
 | [actions/checkout](https://github.com/actions/checkout) | MIT |
