@@ -23,6 +23,7 @@ import java.io.File
 // Kokoro-82M (Apache-2.0) through sherpa-onnx: a much more natural offline voice than Piper, as an optional ~130 MB
 // download. English only, with misaki's US/UK lexicons (no eSpeak NG). Voices are speakers inside one model, so the
 // voice id ("kokoro:af_heart") picks the speaker id, and British speakers switch the model to the UK lexicon.
+// For speed on phones: 4 inference threads, a warm-up when the app opens, and an early first sentence.
 public class KokoroEngine(public val store: VoiceStore, private val threads: Int = DEFAULT_THREADS) : SentenceTtsEngine() {
     private val synth = SherpaSynth("kokoro-tts")
 
@@ -32,6 +33,7 @@ public class KokoroEngine(public val store: VoiceStore, private val threads: Int
 
     override val id: String = ID
     override val capabilities: EngineCapabilities = EngineCapabilities(EngineLocation.Offline, streamingOutput = true)
+    override val quickStartChars: Int = QUICK_START_CHARS
 
     public val modelId: String get() = store.manifest.defaultVoice?.id ?: MODEL_ID
 
@@ -85,6 +87,12 @@ public class KokoroEngine(public val store: VoiceStore, private val threads: Int
         synth.interrupt()
     }
 
+    // Loads the model and lexicon with a tiny, discarded sentence, so the first real reply doesn't wait seconds.
+    override suspend fun warmUp(settings: SynthesisSettings) {
+        if (!installed) return
+        runCatching { synthesizeSentence(WARM_UP, settings) }
+    }
+
     public suspend fun close() {
         synth.close()
     }
@@ -97,7 +105,9 @@ public class KokoroEngine(public val store: VoiceStore, private val threads: Int
         private const val VOICES = "voices.bin"
         private const val US_LEXICON = "lexicon-us-en.txt"
         private const val GB_LEXICON = "lexicon-gb-en.txt"
-        private const val DEFAULT_THREADS = 2
+        private const val DEFAULT_THREADS = 4
+        private const val QUICK_START_CHARS = 60
+        private const val WARM_UP = "Hi."
 
         public fun manifest(): VoiceManifest {
             val text = KokoroEngine::class.java.getResourceAsStream(RESOURCE)?.bufferedReader()?.use { it.readText() }

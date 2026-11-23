@@ -85,6 +85,11 @@ public class PiperEngine(private val store: VoiceStore, private val threads: Int
         synth.interrupt()
     }
 
+    override suspend fun warmUp(settings: SynthesisSettings) {
+        if (store.installedVoices().isEmpty()) return
+        runCatching { synthesizeSentence("Hi.", settings) }
+    }
+
     public suspend fun close() {
         synth.close()
     }
