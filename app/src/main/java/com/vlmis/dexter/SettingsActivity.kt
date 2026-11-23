@@ -81,6 +81,17 @@ import face.core.time.Rng
 import face.render.AnimatedFace
 import kotlinx.coroutines.launch
 import voice.api.VoiceDescriptor
+import face.speech.AudioTrackSink
+import face.speech.PcmBlock
+import face.speech.PcmPlayer
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.MainScope
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.flow.map
+import voice.api.SynthesisSettings
+import voice.api.TtsInput
+import voice.kokoro.KokoroEngine
+import voice.kokoro.KokoroVoices
 import voice.piper.PiperEngine
 import voice.piper.model.InstallState
 import voice.piper.model.VoiceManifest
@@ -100,6 +111,10 @@ class SettingsActivity : ComponentActivity() {
     private val voicePrefs by lazy { getSharedPreferences("voice", MODE_PRIVATE) }
     private val store by lazy { VoiceStore(filesDir, VoiceManifest.loadBundled(), AndroidConnectivity(this)) }
     private val systemEngine by lazy { SystemTtsEngine(this) }
+    private val kokoro by lazy { KokoroEngine(VoiceStore(filesDir, KokoroEngine.manifest(), AndroidConnectivity(this))) }
+    private val previewPlayer by lazy { PcmPlayer({ AudioTrackSink(this) }) }
+    private val uiScope = MainScope()
+    private var previewJob: Job? = null
     private var previewTts: TextToSpeech? = null
     private var pendingPreview: String? = null
 
@@ -389,6 +404,7 @@ class SettingsActivity : ComponentActivity() {
         GlassCard {
             listOf(
                 Triple(SystemTtsEngine.ID, "Phone voice", "Google's voices, no download"),
+                Triple(KokoroEngine.ID, "Kokoro", "Most natural, fully offline · 132 MB download"),
                 Triple(PiperEngine.ID, "Piper", "Fully offline, more robotic"),
             ).forEachIndexed { i, (id, title, detail) ->
                 if (i > 0) RowSeparator(withIcon = false)
@@ -404,7 +420,11 @@ class SettingsActivity : ComponentActivity() {
                 )
             }
         }
-        if (engineId == SystemTtsEngine.ID) SystemVoices() else PiperVoice()
+        when (engineId) {
+            SystemTtsEngine.ID -> SystemVoices()
+            KokoroEngine.ID -> KokoroVoice()
+            else -> PiperVoice()
+        }
         SectionLabel("Lip-sync")
         GlassCard {
             GlassRow("Mouth timing", value = "${offset.toInt()} ms")
@@ -476,6 +496,100 @@ class SettingsActivity : ComponentActivity() {
             contentAlignment = Alignment.Center,
         ) {
             GlassIconView(GlassIcon.Play, Glass.Text, Modifier.size(13.dp))
+        }
+    }
+
+    @Composable
+    private fun KokoroVoice() {
+        val voice = kokoro.store.manifest.defaultVoice ?: return
+        var installed by remember { mutableStateOf(kokoro.installed) }
+        var progress by remember { mutableStateOf("") }
+        var downloading by remember { mutableStateOf(false) }
+        var wifiOnly by remember { mutableStateOf(!voicePrefs.getBoolean("allow_metered_downloads", false)) }
+        var chosen by remember { mutableStateOf(voicePrefs.getString("kokoro_voice_id", null) ?: KokoroVoices.default.id) }
+        SectionLabel("Kokoro")
+        GlassCard {
+            GlassRow(
+                voice.name,
+                detail = if (installed) "Installed · works offline" else "Downloads once (${voice.archive.download.size / 1_000_000} MB), then works offline",
+            )
+            if (!installed) {
+                ButtonRow {
+                    GlassButton(if (downloading) "Downloading…" else "Download", {
+                        downloading = true
+                        kokoro.store.allowMetered = !wifiOnly
+                        uiScope.launch {
+                            try {
+                                kokoro.store.install(voice.id).collect {
+                                    progress = when (it) {
+                                        is InstallState.Downloading -> "Downloading %.0f%% of %d MB".format(100f * it.bytes / it.total, it.total / 1_000_000)
+                                        InstallState.Extracting -> "Unpacking…"
+                                        InstallState.Installed -> "Installed."
+                                    }
+                                }
+                                installed = true
+                                revision.intValue++
+                            } catch (e: Exception) {
+                                progress = "Download paused: ${e.message}. Tap Download to resume."
+                            } finally {
+                                downloading = false
+                            }
+                        }
+                    }, Modifier.fillMaxWidth(), primary = true, enabled = !downloading)
+                }
+            }
+            if (progress.isNotEmpty()) Note(progress)
+            RowSeparator(withIcon = false)
+            GlassRow("Wi-Fi only", trailing = {
+                GlassSwitch(wifiOnly) {
+                    wifiOnly = it
+                    voicePrefs.edit().putBoolean("allow_metered_downloads", !it).apply()
+                }
+            })
+            if (installed) {
+                RowSeparator(withIcon = false)
+                GlassRow("Remove download", detail = "Frees the space Kokoro uses; you can download it again later", onClick = {
+                    previewPlayer.stop()
+                    kokoro.store.delete(voice.id)
+                    installed = false
+                    progress = ""
+                    revision.intValue++
+                })
+            }
+        }
+        if (installed) {
+            SectionLabel("Kokoro voices")
+            GlassCard {
+                KokoroVoices.english.forEachIndexed { i, speaker ->
+                    if (i > 0) RowSeparator(withIcon = false)
+                    GlassRow(
+                        speaker.label,
+                        onClick = {
+                            chosen = speaker.id
+                            voicePrefs.edit().putString("kokoro_voice_id", speaker.id).apply()
+                        },
+                        trailing = {
+                            PlayButton { previewKokoro(speaker.id) }
+                            Spacer(Modifier.width(12.dp))
+                            Check(chosen == speaker.id)
+                        },
+                    )
+                }
+            }
+            Note("The first preview takes a few seconds while the voice loads.")
+        }
+    }
+
+    // Plays a sample through our own player (Kokoro isn't a system voice).
+    private fun previewKokoro(voiceId: String) {
+        previewJob?.cancel()
+        previewPlayer.stop()
+        previewJob = uiScope.launch {
+            runCatching {
+                val blocks = kokoro.synthesize(TtsInput.Text(PREVIEW_LINE), SynthesisSettings(voiceId = voiceId))
+                    .map { PcmBlock(it.samples, it.sampleRate) }
+                previewPlayer.play(blocks)
+            }
         }
     }
 
@@ -562,8 +676,11 @@ class SettingsActivity : ComponentActivity() {
         else -> id
     }
 
-    private fun voiceLabel(): String =
-        if ((voicePrefs.getString("engine", null) ?: SystemTtsEngine.ID) == PiperEngine.ID) "Piper" else "Phone voice"
+    private fun voiceLabel(): String = when (voicePrefs.getString("engine", null)) {
+        PiperEngine.ID -> "Piper"
+        KokoroEngine.ID -> "Kokoro"
+        else -> "Phone voice"
+    }
 
     private fun friendlyVoice(v: VoiceDescriptor): String = v.name.removeSuffix("-local").removeSuffix("-network")
 
@@ -582,15 +699,18 @@ class SettingsActivity : ComponentActivity() {
         val t = previewTts ?: return
         val v = runCatching { t.voices }.getOrNull()?.firstOrNull { it.name == voiceId } ?: return
         t.voice = v
-        t.speak("Hi! I'm Dexter. Do I sound good like this?", TextToSpeech.QUEUE_FLUSH, null, "preview")
+        t.speak(PREVIEW_LINE, TextToSpeech.QUEUE_FLUSH, null, "preview")
         pendingPreview = null
     }
 
     override fun onDestroy() {
+        previewPlayer.stop()
+        uiScope.cancel()
         previewTts?.shutdown()
         super.onDestroy()
     }
 }
 
 private const val MAX_VOICES = 24
+private const val PREVIEW_LINE = "Hi! I'm Dexter. Do I sound good like this?"
 private const val AVATAR_SCALE = 0.62f
