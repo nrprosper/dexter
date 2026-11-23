@@ -34,7 +34,8 @@ If a task conflicts with the architecture doc, stop and ask. Don't quietly diver
 | `:face:playground` | Debug-only | Channel sliders, emotion mixer, scripted scenarios, FPS overlay, voice panel |
 | `:voice:api` | Pure Kotlin/JVM | `TtsEngine`, `PcmChunk` (+ optional `Alignment`), capabilities, voices, settings, `TtsRouter`, `SentenceSplitter`, `TextNormalizer` |
 | `:voice:piper` | Android library | Piper voices through sherpa-onnx (lexicon frontend), voice manifest, verified resumable downloads |
-| `:voice:system` | Android library | Fallback: Android `TextToSpeech` rendered to WAV, played through our player |
+| `:voice:system` | Android library | Android `TextToSpeech` (default voice) rendered to WAV, played through our player |
+| `:voice:kokoro` | Android library | Optional Kokoro-82M v1.0 int8 via sherpa-onnx (misaki lexicons, 28 English speakers), downloaded on request |
 | `:voice:speaker` | Android library | `Speaker` (router → engine → `PcmPlayer` → face) and `VoiceStack`, the composition root |
 | `:assistant:core` | Pure Kotlin/JVM | `Orchestrator` (listen → think → speak), `Ears`/`Brain`/`Mouth`, the reply contract and streaming `ReplyParser`, `Feeling` → `EmotionSignal`/`SpeechStyle` |
 | `:assistant:claude` | Pure Kotlin/JVM | `ClaudeBrain`: Claude Messages API (Anthropic Java SDK), streaming structured replies |
@@ -119,5 +120,5 @@ Run `:face:core:test` before saying a task is done.
 - [x] Default voice: `en_US-ljspeech-medium` int8 (LJ Speech, public-domain data), downloaded at runtime
 - [x] LLM (Phase 7): **Claude API** through the Anthropic Java SDK, default `claude-opus-5-5` at effort `low` (Sonnet 5.5 / Haiku 5.5 selectable), streaming structured replies `{emotion, intensity, confidence, tone, sentences[{text, emotion?, move?}]}`
 - [x] Brains (Phase 7): Claude or Gemini, chosen in Settings; each key encrypted separately. Gemini default `gemini-4-hydrogen` (free tier: Google may use free-tier data, so the app warns about it)
-- [x] Voice default (Phase 7): the phone's Google TTS (system engine); Piper stays as an offline option
+- [x] Voice default (Phase 7): the phone's Google TTS (system engine); Kokoro (optional 132 MB download) and Piper as offline options
 - [x] Speech input (Phase 7): Android `SpeechRecognizer` (on-device when available); **double-tap** the face to talk (wake word later)

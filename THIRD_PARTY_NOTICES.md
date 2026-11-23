@@ -37,7 +37,9 @@ None of these files are in this repository or in the APK. The app downloads them
 | Piper voice `en_US-ljspeech-medium` (int8, packaged for sherpa-onnx) | [sherpa-onnx `tts-models` release](https://github.com/k2-fsa/sherpa-onnx/releases/tag/tts-models), converted from [rhasspy/piper-voices](https://huggingface.co/rhasspy/piper-voices/tree/main/en/en_US/ljspeech/medium) | Training data: [LJ Speech](https://keithito.com/LJ-Speech-Dataset/), public domain ([model card](https://huggingface.co/rhasspy/piper-voices/blob/main/en/en_US/ljspeech/medium/MODEL_CARD)). Voice repository: MIT. Voice trained by Bryce Beattie; dataset by Keith Ito and Linda Johnson. |
 | English pronunciation lexicon `lexicon-en-us.txt` | [sherpa-onnx `tts-models` release](https://github.com/k2-fsa/sherpa-onnx/releases/tag/tts-models) | **Not stated upstream.** The file header says it was built from CMUdict (BSD-style license) and `en_list`, which is most likely eSpeak NG's dictionary source (GPL-3.0-or-later). It is downloaded to the device, never redistributed by this project. Review it before shipping a commercial build. |
 
-The archive the voice comes in also contains eSpeak NG data (GPL-3.0-or-later). The app never extracts or stores it: only `model.onnx`, `tokens.txt` and `MODEL_CARD` are unpacked.
+| Kokoro v1.0 int8 (optional, downloaded only when you tap Download) | [sherpa-onnx `tts-models` release](https://github.com/k2-fsa/sherpa-onnx/releases/tag/tts-models) (`kokoro-int8-multi-lang-v1_0`), converted from [hexgrad/Kokoro-82M](https://huggingface.co/hexgrad/Kokoro-82M) | Model and voices: [Apache-2.0](https://huggingface.co/hexgrad/Kokoro-82M). English lexicons generated from [misaki](https://github.com/hexgrad/misaki) (Apache-2.0). |
+
+The archives the voices come in also contain eSpeak NG data (GPL-3.0-or-later). The app never extracts or stores it: only the files listed in each manifest (model, tokens, voices, English lexicons, model card or license) are unpacked.
 
 ## Build, test and CI only (not shipped)
 

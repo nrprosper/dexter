@@ -56,7 +56,7 @@ Dexter's face is a small character that feels alive on its own and reacts, playf
 - Double-tap while it talks to interrupt. If something goes wrong (no internet, no key, no microphone), Dexter says so with an "oops" instead of freezing.
 
 **A voice, with a mouth that keeps up**
-- Speaks offline with a [Piper](https://github.com/rhasspy/piper) voice running on the phone through [sherpa-onnx](https://github.com/k2-fsa/sherpa-onnx). No account, no cloud. If no voice is downloaded yet, it falls back to the phone's own text-to-speech.
+- Speaks with the phone's own natural Google voice out of the box, or, if you choose, with [Kokoro](https://huggingface.co/hexgrad/Kokoro-82M), an even more natural voice that runs fully offline on the phone after a one-time 132 MB download (Settings → Voice). [Piper](https://github.com/rhasspy/piper) is there too, through [sherpa-onnx](https://github.com/k2-fsa/sherpa-onnx).
 - The mouth follows the actual sound, not a fake loop: it closes between syllables (no flapping), rounds for "oo" and widens for "ee", and the brows and head punctuate emphasised words.
 - The tone changes the performance. Calm speech is gentle, excited speech bounces, serious speech holds still, and funny speech smirks and ends with a laugh. A happy face keeps smiling while it talks, and a worried face talks with restraint.
 - Interrupt it any time: the sound fades out in a few milliseconds and the mouth springs shut, with no click and no frozen open mouth.
@@ -123,7 +123,8 @@ A debug install also adds a second app, **Face Playground**, for trying everythi
 | `:face:playground` | Android library (debug only) | The Face Playground tuning app |
 | `:voice:api` | Kotlin/JVM | The engine-agnostic TTS API: `TtsEngine`, audio chunks with optional timing, the engine router, sentence splitting, number and symbol spelling |
 | `:voice:piper` | Android library | Piper voices on sherpa-onnx, the voice list and the checked, resumable downloader |
-| `:voice:system` | Android library | The fallback to the phone's own text-to-speech |
+| `:voice:system` | Android library | The phone's own text-to-speech (the default voice) |
+| `:voice:kokoro` | Android library | Kokoro, the optional natural offline voice, with 28 English speakers |
 | `:voice:speaker` | Android library | `Speaker`: text in, voice and moving mouth out |
 | `:assistant:core` | Kotlin/JVM | The conversation loop (listen, think, speak), the reply format and its streaming parser |
 | `:assistant:claude` | Kotlin/JVM | Claude as Dexter's brain, through the official Anthropic Java SDK |
