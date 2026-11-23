@@ -1,12 +1,14 @@
 package voice.api
 
-// 16-bit mono PCM. startSample counts from the start of the utterance; textRange points into the utterance text.
+// 16-bit mono PCM. startSample counts from the start of the utterance; textRange points into the utterance text
+// (for TtsInput.Sentences, into that sentence); part is which input sentence the audio belongs to.
 public class PcmChunk(
     public val samples: ShortArray,
     public val sampleRate: Int,
     public val startSample: Long,
     public val textRange: IntRange? = null,
     public val alignment: Alignment? = null,
+    public val part: Int = 0,
 ) {
     init {
         require(sampleRate > 0) { "sampleRate must be positive" }

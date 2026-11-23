@@ -29,6 +29,7 @@ dependencies {
     implementation(project(":face:speech-android"))
     implementation(project(":face:senses-android"))
     implementation(project(":voice:speaker"))
+    implementation(project(":assistant:android"))
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.compose.foundation)
     implementation(libs.androidx.compose.ui)

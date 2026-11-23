@@ -49,10 +49,10 @@ import face.render.AnimatedFace
 import face.render.FaceStyle
 import face.render.FrameStats
 import face.render.MouthStyle
-import voice.speaker.VoiceStack
+import assistant.android.Assistant
 
 @Composable
-internal fun PlaygroundScreen(state: PlaygroundState, voice: VoiceStack, onSave: (String) -> String) {
+internal fun PlaygroundScreen(state: PlaygroundState, assistant: Assistant, onSave: (String) -> String) {
     var fullscreen by rememberSaveable { mutableStateOf(false) }
     BackHandler(fullscreen) { fullscreen = false }
     LaunchedEffect(state.spamming) {
@@ -84,12 +84,12 @@ internal fun PlaygroundScreen(state: PlaygroundState, voice: VoiceStack, onSave:
                 style = MaterialTheme.typography.labelMedium,
             )
         }
-        Controls(state, voice, onSave, { fullscreen = true }, Modifier.weight(0.58f))
+        Controls(state, assistant, onSave, { fullscreen = true }, Modifier.weight(0.58f))
     }
 }
 
 @Composable
-private fun Controls(state: PlaygroundState, voice: VoiceStack, onSave: (String) -> String, onFullscreen: () -> Unit, modifier: Modifier) {
+private fun Controls(state: PlaygroundState, assistant: Assistant, onSave: (String) -> String, onFullscreen: () -> Unit, modifier: Modifier) {
     var name by rememberSaveable { mutableStateOf("") }
     var status by remember { mutableStateOf("") }
     LazyColumn(modifier.fillMaxWidth(), contentPadding = PaddingValues(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -166,7 +166,8 @@ private fun Controls(state: PlaygroundState, voice: VoiceStack, onSave: (String)
                 Toggle("Spam random targets", state.spamming) { state.spamming = it }
             }
         }
-        item { VoicePanel(voice, state.engine) }
+        item { AssistantPanel(assistant, state.engine) }
+        item { VoicePanel(assistant.voice, state.engine) }
         item { PhoneEventsPanel(state.engine) }
         item { PersonalityPanel(state.engine) }
         item { OrchestratorPanel(state.engine) }

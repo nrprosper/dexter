@@ -5,6 +5,7 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
 import org.junit.Assert.assertEquals
@@ -59,6 +60,41 @@ class PcmPlayerTest {
         withTimeout(2_000) { while (!sink.closed) delay(5) }
         assertTrue(sink.flushed)
         assertFalse(player.track.isActive)
+    }
+
+    @Test
+    fun heardTagFollowsPlayback() = runBlocking {
+        val seen = java.util.Collections.synchronizedList(ArrayList<Int>())
+        val blocks = flowOf(
+            PcmBlock(Synthetic.tone(0.3, rate) { 0.4 }, rate, tag = 0),
+            PcmBlock(Synthetic.tone(0.3, rate) { 0.4 }, rate, tag = 1),
+        )
+        val watch = launch(Dispatchers.Default) { player.heardTag.collect { seen.add(it) } }
+        val slow = PcmPlayer({ PacedSink() }, io = Dispatchers.Default)
+        val watchSlow = launch(Dispatchers.Default) { slow.heardTag.collect { seen.add(100 + it) } }
+        slow.play(blocks)
+        delay(100)
+        watch.cancel()
+        watchSlow.cancel()
+        assertTrue("saw $seen", seen.contains(100) && seen.contains(101))
+        assertEquals(-1, slow.heardTag.value)
+    }
+
+    // Plays in real time: write returns at once, but the heard position advances with the clock.
+    private class PacedSink : AudioSink {
+        private var rate = 1
+        private var start = 0L
+        private var written = 0L
+        override fun open(sampleRate: Int) { rate = sampleRate; start = System.nanoTime() }
+        override fun write(samples: ShortArray, offset: Int, length: Int): Int { written += length; return length }
+        override fun playedFrames(nowNanos: Long): Long = (nowNanos - start) * rate / 1_000_000_000L
+        override fun headFrames(): Long = minOf(written, playedFrames(System.nanoTime()))
+        override suspend fun drain(writtenFrames: Long, timeoutMillis: Long, stopped: () -> Boolean): Boolean {
+            while (headFrames() < writtenFrames) delay(10)
+            return true
+        }
+        override fun fadeOutAndFlush() = Unit
+        override fun close() = Unit
     }
 
     @Test(expected = IllegalArgumentException::class)

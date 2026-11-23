@@ -10,6 +10,12 @@ public interface AudioSink {
     // The sample being heard at nowNanos (System.nanoTime base), or -1 before playback has started. Must not allocate.
     public fun playedFrames(nowNanos: Long): Long
 
+    // Frames played so far, from any thread (coarser than playedFrames, no extrapolation); -1 if unknown.
+    public fun headFrames(): Long
+
+    // How many times playback ran dry so far (-1 if unknown).
+    public fun underruns(): Int = -1
+
     // Lets queued audio play out; true once it has, false when stopped() turned true or timeoutMillis passed.
     public suspend fun drain(writtenFrames: Long, timeoutMillis: Long, stopped: () -> Boolean): Boolean
 

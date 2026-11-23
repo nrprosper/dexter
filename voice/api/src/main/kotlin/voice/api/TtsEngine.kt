@@ -22,6 +22,9 @@ public sealed interface TtsInput {
 
     // Text that arrives in pieces (an LLM stream); engines without streaming input group it into sentences.
     public class Stream(public val parts: Flow<String>) : TtsInput
+
+    // Already split by the caller (one spoken sentence each); chunks report which one they belong to as `part`.
+    public class Sentences(public val sentences: Flow<String>) : TtsInput
 }
 
 public enum class EngineLocation { Offline, Online }

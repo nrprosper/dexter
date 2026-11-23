@@ -4,7 +4,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 
 // range is inclusive and points into the full utterance text (the concatenated stream for TtsInput.Stream).
-public class Sentence(public val text: String, public val range: IntRange)
+public class Sentence(public val text: String, public val range: IntRange, public val part: Int = 0)
 
 // Splits text into sentences so synthesis of the first one can start (and play) before the rest is done.
 // Long sentences are broken at the last clause mark (or space) before maxChars.

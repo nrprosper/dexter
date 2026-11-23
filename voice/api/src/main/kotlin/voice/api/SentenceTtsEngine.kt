@@ -26,7 +26,7 @@ public abstract class SentenceTtsEngine(private val splitter: SentenceSplitter =
             val audio = synthesizeSentence(text, settings)
             currentCoroutineContext().ensureActive()
             if (audio.samples.isEmpty()) return@collect
-            emit(PcmChunk(audio.samples, audio.sampleRate, position, sentence.range, audio.alignment))
+            emit(PcmChunk(audio.samples, audio.sampleRate, position, sentence.range, audio.alignment, sentence.part))
             position += audio.samples.size
         }
     }
@@ -34,5 +34,12 @@ public abstract class SentenceTtsEngine(private val splitter: SentenceSplitter =
     private fun sentences(input: TtsInput): Flow<Sentence> = when (input) {
         is TtsInput.Text -> flowOf(*splitter.split(input.text).toTypedArray())
         is TtsInput.Stream -> splitter.stream(input.parts)
+        is TtsInput.Sentences -> flow {
+            var part = 0
+            input.sentences.collect { s ->
+                for (piece in splitter.split(s)) emit(Sentence(piece.text, piece.range, part))
+                part++
+            }
+        }
     }
 }

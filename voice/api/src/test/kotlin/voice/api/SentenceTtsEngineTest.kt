@@ -72,6 +72,14 @@ class SentenceTtsEngineTest {
     }
 
     @Test
+    fun preSplitSentencesKeepTheirPartIndex() = runBlocking {
+        val engine = Counting()
+        val chunks = engine.synthesize(TtsInput.Sentences(kotlinx.coroutines.flow.flowOf("Sure thing", "Dr. Who is here. Twice!"))).toList()
+        assertEquals(listOf("Sure thing", "Doctor Who is here.", "Twice!"), engine.synthesized)
+        assertEquals(listOf(0, 1, 1), chunks.map { it.part })
+    }
+
+    @Test
     fun preparedTextIsWhatGetsSynthesized() = runBlocking {
         val engine = Counting()
         engine.synthesize(TtsInput.Text("I have 2 cats.")).toList()

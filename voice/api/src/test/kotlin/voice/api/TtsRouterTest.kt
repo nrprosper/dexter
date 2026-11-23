@@ -61,6 +61,14 @@ class TtsRouterTest {
     }
 
     @Test
+    fun aSystemVoiceRoutesToTheSystemEngineAndOrderCanPutSystemFirst() {
+        val engines = arrayOf(Fake("piper", voiceIds = listOf("lj")), Fake("system", voiceIds = listOf("en-us-x-iol-local")))
+        assertEquals("system", chosen(router(*engines), SynthesisSettings(voiceId = "en-us-x-iol-local")))
+        assertEquals("system", chosen(router(*engines, policy = RoutingPolicy(order = listOf("system", "piper")))))
+        assertTrue(runCatching { SynthesisSettings(pitch = 0f) }.isFailure)
+    }
+
+    @Test
     fun timestampsPreferAnEngineThatHasThem() {
         val r = router(Fake("piper"), Fake("kokoro", timestamps = AlignmentUnit.Word))
         assertEquals("kokoro", chosen(r, timestamps = true))

@@ -10,15 +10,34 @@ import face.core.senses.FaceTouch
 import face.core.senses.TouchGesture
 
 // Taps, long presses (petting) and drags, hit-tested against the drawn face and sent to the engine.
-internal fun Modifier.faceTouches(engine: FaceEngine, renderer: FaceRenderer, style: () -> FaceStyle): Modifier {
+// A second tap close in time and place also fires onDoubleTap; single taps are never delayed waiting for it.
+internal fun Modifier.faceTouches(
+    engine: FaceEngine,
+    renderer: FaceRenderer,
+    style: () -> FaceStyle,
+    onDoubleTap: () -> (() -> Unit)?,
+): Modifier {
     fun send(gesture: TouchGesture, at: Offset) {
         val hit = renderer.hitTest(at.x, at.y, engine.pose, style())
         engine.touch(FaceTouch(gesture, hit.part, hit.lookX, hit.lookY))
     }
     return pointerInput(engine) {
         var petting = false
+        var lastTapMillis = Long.MIN_VALUE
+        var lastTap = Offset.Zero
         detectTapGestures(
-            onTap = { send(TouchGesture.Tap, it) },
+            onTap = {
+                send(TouchGesture.Tap, it)
+                val now = System.currentTimeMillis()
+                val near = (it - lastTap).getDistance() < viewConfiguration.touchSlop * DOUBLE_TAP_SLOP
+                if (lastTapMillis != Long.MIN_VALUE && now - lastTapMillis <= viewConfiguration.doubleTapTimeoutMillis && near) {
+                    lastTapMillis = Long.MIN_VALUE
+                    onDoubleTap()?.invoke()
+                } else {
+                    lastTapMillis = now
+                    lastTap = it
+                }
+            },
             onLongPress = {
                 petting = true
                 send(TouchGesture.LongPressStart, it)
@@ -47,3 +66,5 @@ internal fun Modifier.faceTouches(engine: FaceEngine, renderer: FaceRenderer, st
         )
     }
 }
+
+private const val DOUBLE_TAP_SLOP = 4f

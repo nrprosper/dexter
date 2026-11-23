@@ -1,3 +1,5 @@
 <resources>
     <string name="app_name">dexter</string>
+    <string name="settings_short">Settings</string>
+    <string name="settings_long">Dexter settings</string>
 </resources>

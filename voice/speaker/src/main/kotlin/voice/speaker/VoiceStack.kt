@@ -13,10 +13,10 @@ import voice.piper.model.VoiceManifest
 import voice.piper.model.VoiceStore
 import voice.system.SystemTtsEngine
 
-// The composition root for speech: engines (Piper first, the system voice as fallback), router, player and Speaker.
+// The composition root for speech: engines (the phone's Google voice by default, Piper optional), router, player and Speaker.
 // A future engine (Kokoro, ElevenLabs) is added to `engines` here; the face, player and Speaker don't change.
 // User settings (sync offset, lead, voice, Wi-Fi-only) are kept in SharedPreferences.
-public class VoiceStack(context: Context, face: FaceController, scope: CoroutineScope) {
+public class VoiceStack(context: Context, face: FaceController, scope: CoroutineScope, manageActivity: Boolean = true) {
     private val app = context.applicationContext
     private val prefs = app.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
 
@@ -26,7 +26,7 @@ public class VoiceStack(context: Context, face: FaceController, scope: Coroutine
     public val system: SystemTtsEngine = SystemTtsEngine(app)
     public val router: TtsRouter = TtsRouter(listOf(piper, system), RoutingPolicy(), connectivity)
     public val player: PcmPlayer = PcmPlayer({ AudioTrackSink(app) })
-    public val speaker: Speaker = Speaker(router, player, face, scope)
+    public val speaker: Speaker = Speaker(router, player, face, scope, manageActivity)
 
     public var syncOffsetMillis: Int
         get() = player.track.syncOffsetMillis
@@ -42,10 +42,19 @@ public class VoiceStack(context: Context, face: FaceController, scope: Coroutine
             prefs.edit().putInt(LEAD, value).apply()
         }
 
-    public var voiceId: String?
-        get() = prefs.getString(VOICE, null)
+    // Which engine speaks: the phone's Google voice by default, or the downloaded Piper voice.
+    public var engine: String
+        get() = prefs.getString(ENGINE, null)?.takeIf { it == PiperEngine.ID } ?: SystemTtsEngine.ID
         set(value) {
-            prefs.edit().putString(VOICE, value).apply()
+            prefs.edit().putString(ENGINE, value).apply()
+            applyEngine()
+        }
+
+    // The chosen voice for the current engine (null = that engine's best default).
+    public var voiceId: String?
+        get() = prefs.getString(if (engine == PiperEngine.ID) VOICE else SYSTEM_VOICE, null)
+        set(value) {
+            prefs.edit().putString(if (engine == PiperEngine.ID) VOICE else SYSTEM_VOICE, value).apply()
         }
 
     public var allowMeteredDownloads: Boolean
@@ -56,9 +65,20 @@ public class VoiceStack(context: Context, face: FaceController, scope: Coroutine
         }
 
     init {
+        reloadPrefs()
+    }
+
+    // Picks up changes made elsewhere (a settings screen) to the saved sync offset, lead and download policy.
+    public fun reloadPrefs() {
         player.track.syncOffsetMillis = prefs.getInt(SYNC_OFFSET, 0)
         player.track.leadMillis = prefs.getInt(LEAD, AmplitudeSpeechTrack.DEFAULT_LEAD_MILLIS)
         store.allowMetered = prefs.getBoolean(METERED, false)
+        applyEngine()
+    }
+
+    private fun applyEngine() {
+        val first = engine
+        router.policy = RoutingPolicy(order = listOf(first) + RoutingPolicy.DEFAULT_ORDER.filter { it != first })
     }
 
     private companion object {
@@ -66,6 +86,8 @@ public class VoiceStack(context: Context, face: FaceController, scope: Coroutine
         const val SYNC_OFFSET = "sync_offset_ms"
         const val LEAD = "lead_ms"
         const val VOICE = "voice_id"
+        const val SYSTEM_VOICE = "system_voice_id"
+        const val ENGINE = "engine"
         const val METERED = "allow_metered_downloads"
     }
 }

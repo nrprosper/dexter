@@ -55,6 +55,7 @@ class SpeakerTest {
         override fun setDeviceState(state: DeviceState) = Unit
         override fun showVolume(level: Float) = Unit
         override fun setTilt(x: Float, y: Float) = Unit
+        override fun stage(move: face.api.StageMove) = Unit
         override val snapshot: StateFlow<FaceSnapshot> = MutableStateFlow(FaceSnapshot())
     }
 
@@ -66,6 +67,7 @@ class SpeakerTest {
             return length
         }
         override fun playedFrames(nowNanos: Long): Long = 0
+        override fun headFrames(): Long = 0
         override suspend fun drain(writtenFrames: Long, timeoutMillis: Long, stopped: () -> Boolean) = !stopped()
         override fun fadeOutAndFlush() { flushed = true }
         override fun close() = Unit

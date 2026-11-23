@@ -11,6 +11,7 @@ import face.api.Personality
 import face.api.PowerMode
 import face.api.SpeechStyle
 import face.api.SpeechTrack
+import face.api.StageMove
 import face.core.anim.DynamicsConfig
 import face.core.anim.DynamicsProfile
 import face.core.anim.LayerStack
@@ -53,6 +54,9 @@ import face.core.speech.MouthConfig
 import face.core.speech.SpeechLayer
 import face.core.speech.SpeechProbe
 import face.core.speech.SpeechTrackLayer
+import face.core.stage.Stage
+import face.core.stage.StageConfig
+import face.core.stage.StageLayer
 import face.core.rig.ChannelGroup
 import face.core.rig.Constraints
 import face.core.rig.FacePose
@@ -109,6 +113,7 @@ public class FaceEngine(
     private val volume = VolumeWatch()
     private val touch = TouchResponder(ctx, blink, reactions, director)
     private val tilt = TiltParallax()
+    private val stage = Stage(rng, ctx).apply { config = StageConfig.loadBundled() }
     private val emotionLayer = EmotionLayer(library, neutral, emotionState, manual)
     private val gazeLayer = GazeLayer(gaze, ctx)
     private val lifeLayer = LifeLayer(idle, boredom, breath, sleepPose, ctx)
@@ -116,7 +121,7 @@ public class FaceEngine(
     private val stack = LayerStack(
         arrayOf(
             emotionLayer, activityLayer, gazeLayer, lifeLayer,
-            SpeechLayer(speech), SensesLayer(device, volume, touch, tilt), ReactionLayer(reactions, quirks, neutral),
+            StageLayer(stage), SpeechLayer(speech), SensesLayer(device, volume, touch, tilt), ReactionLayer(reactions, quirks, neutral),
         ),
     )
 
@@ -183,6 +188,8 @@ public class FaceEngine(
     override fun setEmotion(signal: EmotionSignal): Unit = inbox.setEmotion(signal)
 
     override fun react(event: FaceReaction): Unit = inbox.react(event)
+
+    override fun stage(move: StageMove): Unit = inbox.stage(move)
 
     override fun attachSpeech(track: SpeechTrack, style: SpeechStyle): Unit = inbox.attachSpeech(track, style)
 
@@ -270,6 +277,7 @@ public class FaceEngine(
         tilt.x = inbox.tiltX()
         tilt.y = inbox.tiltY()
         reactions.update(clamped)
+        stage.update(clamped, activities.current, volume.weight)
         quirks.playfulAllowed = speech.quirksAllowed
         quirks.update(clamped)
         speech.update(clamped)
@@ -341,6 +349,10 @@ public class FaceEngine(
         }
         if (inbox.takePoke() && activities.current != Activity.Sleeping) wakeIfSleepy()
         while (true) {
+            val move = inbox.pollMove() ?: break
+            if (activities.current != Activity.Sleeping) stage.move(move)
+        }
+        while (true) {
             val reaction = inbox.pollReaction() ?: break
             lastReaction = reaction
             reactions.react(reaction)
@@ -362,6 +374,7 @@ public class FaceEngine(
         emotionLayer.configure(p)
         quirks.configure(p.quirks)
         reactions.playfulGain = p.expressiveness * (PLAYFUL_BASE + PLAYFUL_GAIN * p.playfulness)
+        stage.amplitude = p.expressiveness.coerceIn(0f, STAGE_AMPLITUDE_MAX)
         if (!initial) {
             val life = PersonalityMapper.life(p)
             blink.config = life.blink
@@ -430,6 +443,7 @@ public class FaceEngine(
         const val WAKE = "wake"
         const val NANOS_PER_SECOND = 1e9
         const val NO_FRAME_TIME = Long.MIN_VALUE
+        const val STAGE_AMPLITUDE_MAX = 1.3f
         val SPEECH_CHANNELS: BooleanArray = BooleanArray(Channel.count) {
             Channel.all[it] == Channel.MouthOpen || Channel.all[it] == Channel.MouthWidth || Channel.all[it] == Channel.MouthRoundness
         }

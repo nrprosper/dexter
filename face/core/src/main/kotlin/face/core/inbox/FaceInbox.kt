@@ -8,6 +8,7 @@ import face.api.Personality
 import face.api.PowerMode
 import face.api.SpeechStyle
 import face.api.SpeechTrack
+import face.api.StageMove
 import face.core.senses.FaceTouch
 import java.util.concurrent.ConcurrentLinkedQueue
 import java.util.concurrent.atomic.AtomicBoolean
@@ -30,6 +31,7 @@ internal class FaceInbox {
     private val voiceBits = AtomicInteger(0f.toRawBits())
     private val poked = AtomicBoolean(false)
     private val reactions = ConcurrentLinkedQueue<FaceReaction>()
+    private val moves = ConcurrentLinkedQueue<StageMove>()
 
     fun setActivity(value: Activity) = activity.set(value)
 
@@ -70,6 +72,12 @@ internal class FaceInbox {
     fun react(event: FaceReaction) {
         reactions.add(event)
     }
+
+    fun stage(move: StageMove) {
+        moves.add(move)
+    }
+
+    fun pollMove(): StageMove? = moves.poll()
 
     fun takeActivity(): Activity? = activity.getAndSet(null)
 

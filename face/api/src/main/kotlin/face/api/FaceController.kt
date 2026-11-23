@@ -10,6 +10,9 @@ public interface FaceController {
 
     public fun react(event: FaceReaction)
 
+    // Stage direction, queued like reactions: placements are latest-wins, beats play in order.
+    public fun stage(move: StageMove)
+
     public fun attachSpeech(track: SpeechTrack, style: SpeechStyle)
 
     public fun detachSpeech()

@@ -1,0 +1,17 @@
+{
+  "format": 1,
+  "rate": 6.0,
+  "returnAfter": 2.5,
+  "placements": {
+    "center": { "x": 0.0, "y": 0.0, "scale": 0.0, "tilt": 0.0, "lookX": 0.0 },
+    "left": { "x": -0.5, "y": 0.05, "scale": -0.08, "tilt": -0.06, "lookX": 0.35 },
+    "right": { "x": 0.5, "y": 0.05, "scale": -0.08, "tilt": 0.06, "lookX": -0.35 },
+    "up": { "x": 0.0, "y": 0.4, "scale": -0.1, "tilt": 0.0, "lookX": 0.0, "lookY": -0.3 },
+    "down": { "x": 0.0, "y": -0.35, "scale": -0.05, "tilt": 0.0, "lookX": 0.0, "lookY": 0.3 },
+    "closer": { "x": 0.0, "y": -0.05, "scale": 0.35, "tilt": 0.0, "lookX": 0.0 },
+    "away": { "x": 0.0, "y": 0.1, "scale": -0.3, "tilt": 0.0, "lookX": 0.0 }
+  },
+  "hop": { "attack": 0.12, "hold": 0.04, "release": 0.22, "height": 0.25, "squash": -0.25 },
+  "leanIn": { "attack": 0.25, "hold": 0.9, "release": 0.4, "scale": 0.18, "tilt": 0.12, "brows": 0.25 },
+  "peek": { "attack": 0.3, "hold": 1.0, "release": 0.45, "x": 0.82, "tilt": 0.22, "lookX": 0.6 }
+}

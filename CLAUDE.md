@@ -36,10 +36,15 @@ If a task conflicts with the architecture doc, stop and ask. Don't quietly diver
 | `:voice:piper` | Android library | Piper voices through sherpa-onnx (lexicon frontend), voice manifest, verified resumable downloads |
 | `:voice:system` | Android library | Fallback: Android `TextToSpeech` rendered to WAV, played through our player |
 | `:voice:speaker` | Android library | `Speaker` (router → engine → `PcmPlayer` → face) and `VoiceStack`, the composition root |
+| `:assistant:core` | Pure Kotlin/JVM | `Orchestrator` (listen → think → speak), `Ears`/`Brain`/`Mouth`, the reply contract and streaming `ReplyParser`, `Feeling` → `EmotionSignal`/`SpeechStyle` |
+| `:assistant:claude` | Pure Kotlin/JVM | `ClaudeBrain`: Claude Messages API (Anthropic Java SDK), streaming structured replies |
+| `:assistant:gemini` | Pure Kotlin/JVM | `GeminiBrain`: Gemini API `streamGenerateContent` over REST (OkHttp + Jackson, already shipped), same reply contract |
+| `:assistant:android` | Android library | `RecognizerEars` (SpeechRecognizer), `SpeakerMouth`, `ApiKeyStore` (Keystore-encrypted key), `Assistant` wiring |
 
 Dependency direction: `api` ← `core` ← `render-compose` ← `app`. `speech-android` depends only on `face:api`.
 `voice:api` depends on nothing Android; engines depend on `voice:api`; only `voice:speaker` joins voice and face.
 A new TTS engine (Kokoro, ElevenLabs) implements `TtsEngine` and is added in `VoiceStack`; the face, player and `Speaker` don't change.
+The assistant reaches the face only through `FaceController` (`:face:api`); the brain is behind the `Brain` interface.
 
 ## Hard rules
 
@@ -51,7 +56,7 @@ A new TTS engine (Kokoro, ElevenLabs) implements `TtsEngine` and is added in `Vo
 6. **No allocations per frame** in the frame loop, the simulation step or the renderer. Preallocate buffers, reuse `Path` objects, no `data class` copies or capturing lambdas in hot paths.
 7. **Draw phase only.** Animated state is read only inside the `Canvas`/`drawBehind` lambda. Nothing should recompose per frame.
 8. **No per-frame `BlurMaskFilter`.** Do glow with gradients or a cached layer.
-9. **The AI never controls geometry.** Outside modules send intent (activity, emotion, intensity, tone, reactions). Only the Director and layers turn intent into channel values.
+9. **The AI never controls geometry.** Outside modules send intent (activity, emotion, intensity, tone, reactions, stage directions such as `StageMove.Left` or `Hop`). Only the Director and layers turn intent into channel values; a stage direction names a move, the engine decides the motion.
 10. **The API is idempotent for state, queued for events.** `setActivity` and `setEmotion` mean "latest wins". `react(...)` is queued and resolved by priority and cooldown. Calls go into a thread-safe inbox, drained at the start of each frame.
 11. **No new dependencies** without asking first, explaining what they add.
 
@@ -59,6 +64,7 @@ A new TTS engine (Kokoro, ElevenLabs) implements `TtsEngine` and is added in `Vo
 
 This repository is public.
 
+- The Claude API key is entered on the phone (Settings, from the launcher icon's long-press menu) and stored encrypted with an Android Keystore key, excluded from backups. Never put it in code, `BuildConfig`, `local.properties`, Gradle files or logs.
 - Never commit secrets, keystores, `google-services.json`, `local.properties`, `.env` files, model files (`*.onnx`, voice archives), recordings or any personal data. `.gitignore` covers these; keep it that way.
 - Models are downloaded at runtime from their official source, listed in `voice/piper/src/main/resources/voice/piper/voices.json` with url, sha256, size and license.
 - The `Secret scan` GitHub Action runs gitleaks on every push and PR; a finding fails the build.
@@ -111,3 +117,7 @@ Run `:face:core:test` before saying a task is done.
 - [x] JSON format for expressions and personality: expressions `{format: 1, id, deltas}` (Phase 1); personality format 1 with grouped sections (mood, director, motion, blink, gaze, idle, sleepiness, quirks), see `face/core/src/main/resources/face/personality/` (Phase 5)
 - [x] TTS source (Phase 6): **offline first**. Default: Piper voices through sherpa-onnx 2.x (Apache-2.0) with the lexicon text frontend, no eSpeak NG. Fallback: Android `TextToSpeech`, only when no Piper voice is installed. Later: Kokoro-82M via sherpa-onnx (optional, higher quality), then ElevenLabs (cloud). Never the GPL `piper1-gpl` code.
 - [x] Default voice: `en_US-ljspeech-medium` int8 (LJ Speech, public-domain data), downloaded at runtime
+- [x] LLM (Phase 7): **Claude API** through the Anthropic Java SDK, default `claude-opus-5-5` at effort `low` (Sonnet 5.5 / Haiku 5.5 selectable), streaming structured replies `{emotion, intensity, confidence, tone, sentences[{text, emotion?, move?}]}`
+- [x] Brains (Phase 7): Claude or Gemini, chosen in Settings; each key encrypted separately. Gemini default `gemini-4-hydrogen` (free tier: Google may use free-tier data, so the app warns about it)
+- [x] Voice default (Phase 7): the phone's Google TTS (system engine); Piper stays as an offline option
+- [x] Speech input (Phase 7): Android `SpeechRecognizer` (on-device when available); **double-tap** the face to talk (wake word later)

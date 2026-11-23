@@ -46,6 +46,9 @@ android {
 dependencies {
     implementation(project(":face:render-compose"))
     implementation(project(":face:senses-android"))
+    implementation(project(":assistant:android"))
+    implementation(libs.androidx.compose.material3)
+    implementation(libs.androidx.compose.foundation)
     debugImplementation(project(":face:playground"))
 
     implementation(platform(libs.androidx.compose.bom))
