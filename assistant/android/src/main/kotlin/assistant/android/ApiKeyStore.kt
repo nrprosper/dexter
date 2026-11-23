@@ -16,9 +16,22 @@ import javax.crypto.spec.GCMParameterSpec
 // (StrongBox where the phone has it) and can never be exported. Only the IV and ciphertext are stored, in an
 // app-private preferences file that is excluded from backups and device transfer (a restored copy couldn't be
 // decrypted anyway: Keystore keys don't leave the device). The key is never logged or shown in full.
-public class ApiKeyStore(context: Context, public val provider: BrainProvider = BrainProvider.Claude) {
-    private val prefs = context.applicationContext.getSharedPreferences(file(provider), Context.MODE_PRIVATE)
-    private val alias = ALIAS_PREFIX + provider.id + ALIAS_SUFFIX
+public enum class KeySlot(public val id: String, public val label: String) {
+    Claude("claude", "Anthropic"),
+    Gemini("gemini", "Gemini"),
+    ElevenLabs("elevenlabs", "ElevenLabs"),
+    ;
+
+    public companion object {
+        public fun of(provider: BrainProvider): KeySlot = if (provider == BrainProvider.Gemini) Gemini else Claude
+    }
+}
+
+public class ApiKeyStore(context: Context, public val slot: KeySlot) {
+    public constructor(context: Context, provider: BrainProvider = BrainProvider.Claude) : this(context, KeySlot.of(provider))
+
+    private val prefs = context.applicationContext.getSharedPreferences(file(slot), Context.MODE_PRIVATE)
+    private val alias = ALIAS_PREFIX + slot.id + ALIAS_SUFFIX
 
     public val hasKey: Boolean get() = prefs.contains(CIPHERTEXT)
 
@@ -27,14 +40,14 @@ public class ApiKeyStore(context: Context, public val provider: BrainProvider = 
 
     public fun save(raw: String) {
         val key = raw.trim()
-        require(isPlausible(provider, key)) { "That doesn't look like a ${provider.label} API key." }
+        require(isPlausible(slot, key)) { "That doesn't look like a ${slot.label} API key." }
         val cipher = Cipher.getInstance(TRANSFORMATION)
         cipher.init(Cipher.ENCRYPT_MODE, secret())
         val sealed = cipher.doFinal(key.toByteArray(Charsets.UTF_8))
         prefs.edit()
             .putString(IV, Base64.encodeToString(cipher.iv, Base64.NO_WRAP))
             .putString(CIPHERTEXT, Base64.encodeToString(sealed, Base64.NO_WRAP))
-            .putString(HINT, (if (provider == BrainProvider.Claude) PREFIX else "") + "…" + key.takeLast(HINT_CHARS))
+            .putString(HINT, (if (slot == KeySlot.Claude) PREFIX else "") + "…" + key.takeLast(HINT_CHARS))
             .apply()
     }
 
@@ -96,12 +109,15 @@ public class ApiKeyStore(context: Context, public val provider: BrainProvider = 
         // Google has changed its key format over time: accept any printable key without spaces.
         private val GOOGLE = Regex("^[\\x21-\\x7E]{20,256}$")
 
-        // Claude keeps the original file name, so keys saved before Gemini existed still load.
-        private fun file(provider: BrainProvider): String = if (provider == BrainProvider.Claude) FILE else FILE + "_" + provider.id
+        // Claude keeps the original file name, so keys saved before the others existed still load.
+        private fun file(slot: KeySlot): String = if (slot == KeySlot.Claude) FILE else FILE + "_" + slot.id
 
-        public fun isPlausible(provider: BrainProvider, key: String): Boolean = when (provider) {
-            BrainProvider.Claude -> ANTHROPIC.matches(key.trim())
-            BrainProvider.Gemini -> GOOGLE.matches(key.trim())
+        public fun isPlausible(provider: BrainProvider, key: String): Boolean = isPlausible(KeySlot.of(provider), key)
+
+        // Anthropic keys have a fixed shape; Google and ElevenLabs have changed theirs, so any printable key without spaces.
+        public fun isPlausible(slot: KeySlot, key: String): Boolean = when (slot) {
+            KeySlot.Claude -> ANTHROPIC.matches(key.trim())
+            KeySlot.Gemini, KeySlot.ElevenLabs -> GOOGLE.matches(key.trim())
         }
     }
 }

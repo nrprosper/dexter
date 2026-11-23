@@ -29,7 +29,8 @@ public class Assistant(context: Context, face: FaceController, scope: CoroutineS
 
     public val claudeKeys: ApiKeyStore = ApiKeyStore(app, BrainProvider.Claude)
     public val geminiKeys: ApiKeyStore = ApiKeyStore(app, BrainProvider.Gemini)
-    public val voice: VoiceStack = VoiceStack(app, face, scope, manageActivity = false)
+    public val elevenLabsKeys: ApiKeyStore = ApiKeyStore(app, KeySlot.ElevenLabs)
+    public val voice: VoiceStack = VoiceStack(app, face, scope, manageActivity = false, elevenLabsKey = { elevenLabsKeys.load() })
     public val claude: ClaudeBrain = ClaudeBrain({ claudeKeys.load() }, { ClaudeSettings(model = claudeModel) })
     public val gemini: GeminiBrain = GeminiBrain({ geminiKeys.load() }, { GeminiSettings(model = geminiModel) })
 

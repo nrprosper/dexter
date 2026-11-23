@@ -1,6 +1,8 @@
 package com.vlmis.dexter
 
 import android.content.Intent
+import android.media.AudioAttributes
+import android.media.MediaPlayer
 import android.os.Bundle
 import android.speech.tts.TextToSpeech
 import android.view.WindowManager
@@ -50,6 +52,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import assistant.android.ApiKeyStore
+import assistant.android.KeySlot
 import assistant.android.Assistant
 import assistant.claude.ClaudeBrain
 import assistant.claude.ClaudeSettings
@@ -90,6 +93,10 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.map
 import voice.api.SynthesisSettings
 import voice.api.TtsInput
+import voice.elevenlabs.ElevenLabsEngine
+import voice.elevenlabs.ElevenLabsKeyCheck
+import voice.elevenlabs.ElevenLabsSettings
+import voice.elevenlabs.ElevenLabsVoice
 import voice.kokoro.KokoroEngine
 import voice.kokoro.KokoroVoices
 import voice.piper.PiperEngine
@@ -113,6 +120,9 @@ class SettingsActivity : ComponentActivity() {
     private val systemEngine by lazy { SystemTtsEngine(this) }
     private val kokoro by lazy { KokoroEngine(VoiceStore(filesDir, KokoroEngine.manifest(), AndroidConnectivity(this))) }
     private val previewPlayer by lazy { PcmPlayer({ AudioTrackSink(this) }) }
+    private val elevenKeys by lazy { ApiKeyStore(this, KeySlot.ElevenLabs) }
+    private val elevenLabs by lazy { ElevenLabsEngine({ elevenKeys.load() }, { ElevenLabsSettings(model = elevenModel()) }) }
+    private var media: MediaPlayer? = null
     private val uiScope = MainScope()
     private var previewJob: Job? = null
     private var previewTts: TextToSpeech? = null
@@ -248,25 +258,48 @@ class SettingsActivity : ComponentActivity() {
 
     @Composable
     private fun KeyPage() {
+        val provider = currentProvider()
+        KeyEditor(keys, if (provider == BrainProvider.Gemini) "Gemini API key" else "sk-ant-…") { key ->
+            val result = if (provider == BrainProvider.Gemini) {
+                GeminiBrain({ null }, { GeminiSettings(model = currentModel()) }).check(key)
+            } else {
+                ClaudeBrain({ null }, { ClaudeSettings(model = currentModel()) }).check(key)
+            }
+            when (result) {
+                KeyCheck.Ok -> "The key works." to true
+                KeyCheck.Rejected -> "${if (provider == BrainProvider.Gemini) "Google" else "Anthropic"} rejected this key." to false
+                KeyCheck.ModelUnavailable -> "The key works, but can't use ${modelLabel(currentModel())}." to false
+                KeyCheck.Offline -> "No connection; try again online." to false
+                KeyCheck.Error -> "The service returned an error; try again later." to false
+            }
+        }
+        if (provider == BrainProvider.Gemini) Note("Get a free key at aistudio.google.com → Get API key.")
+        Note("Your key is encrypted with a key locked in this phone's secure keystore. It's never backed up and never shown again.")
+    }
+
+    // One API key: masked entry, Save (validated, encrypted), Check (a free call to the service) and Remove.
+    @Composable
+    private fun KeyEditor(store: ApiKeyStore, placeholder: String, onSaved: () -> Unit = {}, check: suspend (String) -> Pair<String, Boolean>) {
         val scope = rememberCoroutineScope()
         var entry by remember { mutableStateOf("") }
-        var hint by remember { mutableStateOf(keys.hint) }
+        var hint by remember(store) { mutableStateOf(store.hint) }
         var status by remember { mutableStateOf("") }
         var statusColor by remember { mutableStateOf(Glass.Secondary) }
         GlassCard {
             GlassRow(if (hint != null) "Saved key" else "No key yet", value = hint ?: "Paste one below")
             RowSeparator(withIcon = false)
             Box(Modifier.padding(horizontal = Glass.Margin, vertical = 12.dp)) {
-                GlassSecretField(entry, { entry = it.trim() }, if (currentProvider() == BrainProvider.Gemini) "Gemini API key" else "sk-ant-…")
+                GlassSecretField(entry, { entry = it.trim() }, placeholder)
             }
             ButtonRow {
                 GlassButton(
                     "Save",
                     {
                         try {
-                            keys.save(entry)
-                            hint = keys.hint
+                            store.save(entry)
+                            hint = store.hint
                             revision.intValue++
+                            onSaved()
                             status = "Saved and encrypted. Clear your clipboard if you copied it."
                             statusColor = Glass.Secondary
                         } catch (e: IllegalArgumentException) {
@@ -283,27 +316,16 @@ class SettingsActivity : ComponentActivity() {
                 GlassButton(
                     "Check",
                     {
-                        val key = keys.load()
+                        val key = store.load()
                         if (key == null) {
                             status = "No key saved."
                         } else {
                             status = "Checking…"
                             statusColor = Glass.Secondary
                             scope.launch {
-                                val provider = currentProvider()
-                                val result = if (provider == BrainProvider.Gemini) {
-                                    GeminiBrain({ null }, { GeminiSettings(model = currentModel()) }).check(key)
-                                } else {
-                                    ClaudeBrain({ null }, { ClaudeSettings(model = currentModel()) }).check(key)
-                                }
-                                status = when (result) {
-                                    KeyCheck.Ok -> "The key works."
-                                    KeyCheck.Rejected -> "${if (provider == BrainProvider.Gemini) "Google" else "Anthropic"} rejected this key."
-                                    KeyCheck.ModelUnavailable -> "The key works, but can't use ${modelLabel(currentModel())}."
-                                    KeyCheck.Offline -> "No connection; try again online."
-                                    KeyCheck.Error -> "The service returned an error; try again later."
-                                }
-                                statusColor = if (result == KeyCheck.Ok) Glass.Secondary else Glass.Danger
+                                val (message, ok) = check(key)
+                                status = message
+                                statusColor = if (ok) Glass.Secondary else Glass.Danger
                             }
                         }
                     },
@@ -313,9 +335,10 @@ class SettingsActivity : ComponentActivity() {
                 GlassButton(
                     "Remove",
                     {
-                        keys.clear()
+                        store.clear()
                         hint = null
                         revision.intValue++
+                        onSaved()
                         status = "Key removed."
                         statusColor = Glass.Secondary
                     },
@@ -325,10 +348,6 @@ class SettingsActivity : ComponentActivity() {
             }
             if (status.isNotEmpty()) Note(status, statusColor)
         }
-        if (currentProvider() == BrainProvider.Gemini) {
-            Note("Get a free key at aistudio.google.com → Get API key.")
-        }
-        Note("Your key is encrypted with a key locked in this phone's secure keystore. It's never backed up and never shown again.")
     }
 
     @Composable
@@ -404,7 +423,8 @@ class SettingsActivity : ComponentActivity() {
         GlassCard {
             listOf(
                 Triple(SystemTtsEngine.ID, "Phone voice", "Google's voices, no download"),
-                Triple(KokoroEngine.ID, "Kokoro", "Most natural, fully offline · 132 MB download"),
+                Triple(ElevenLabsEngine.ID, "ElevenLabs", "Studio-quality, online · your ElevenLabs key"),
+                Triple(KokoroEngine.ID, "Kokoro", "Natural, fully offline · 132 MB download"),
                 Triple(PiperEngine.ID, "Piper", "Fully offline, more robotic"),
             ).forEachIndexed { i, (id, title, detail) ->
                 if (i > 0) RowSeparator(withIcon = false)
@@ -423,6 +443,7 @@ class SettingsActivity : ComponentActivity() {
         when (engineId) {
             SystemTtsEngine.ID -> SystemVoices()
             KokoroEngine.ID -> KokoroVoice()
+            ElevenLabsEngine.ID -> ElevenLabsSection()
             else -> PiperVoice()
         }
         SectionLabel("Lip-sync")
@@ -580,6 +601,101 @@ class SettingsActivity : ComponentActivity() {
         }
     }
 
+    @Composable
+    private fun ElevenLabsSection() {
+        var hasKey by remember { mutableStateOf(elevenKeys.hasKey) }
+        var model by remember { mutableStateOf(elevenModel()) }
+        var chosen by remember { mutableStateOf(voicePrefs.getString("elevenlabs_voice_id", null)) }
+        var voices by remember { mutableStateOf<List<ElevenLabsVoice>?>(null) }
+        var loadError by remember { mutableStateOf("") }
+        var reload by remember { mutableIntStateOf(0) }
+        SectionLabel("ElevenLabs key")
+        KeyEditor(elevenKeys, "ElevenLabs API key", onSaved = {
+            hasKey = elevenKeys.hasKey
+            voices = null
+            reload++
+        }) { key ->
+            when (elevenLabs.check(key)) {
+                ElevenLabsKeyCheck.Ok -> "The key works." to true
+                ElevenLabsKeyCheck.Rejected -> "ElevenLabs rejected this key." to false
+                ElevenLabsKeyCheck.Offline -> "No connection; try again online." to false
+                ElevenLabsKeyCheck.Error -> "ElevenLabs returned an error; try again later." to false
+            }
+        }
+        Note("Create a key at elevenlabs.io → Developers → API keys. Dexter's replies are sent to ElevenLabs and use your credits; if it fails, Dexter falls back to the phone's voice.")
+        SectionLabel("ElevenLabs model")
+        GlassCard {
+            listOf(
+                "eleven_flash_v2_5" to "Flash v2.5 · fastest, cheapest",
+                "eleven_v4_turbo" to "v4 Turbo · more expressive, fast",
+                "eleven_multilingual_v2" to "Multilingual v2 · lifelike, slower",
+            ).forEachIndexed { i, (id, label) ->
+                if (i > 0) RowSeparator(withIcon = false)
+                GlassRow(label, onClick = {
+                    model = id
+                    voicePrefs.edit().putString("elevenlabs_model", id).apply()
+                }, trailing = { Check(model == id) })
+            }
+        }
+        if (hasKey) {
+            LaunchedEffect(reload) {
+                loadError = ""
+                voices = try {
+                    elevenLabs.library(refresh = reload > 0)
+                } catch (e: Exception) {
+                    loadError = e.message ?: "Couldn't load voices."
+                    emptyList()
+                }
+            }
+            SectionLabel("ElevenLabs voices")
+            GlassCard {
+                val list = voices
+                when {
+                    list == null -> Note("Loading your voices…")
+                    list.isEmpty() -> Note(loadError.ifEmpty { "No voices in this account yet." }, if (loadError.isEmpty()) Glass.Secondary else Glass.Danger)
+                    else -> list.forEachIndexed { i, v ->
+                        if (i > 0) RowSeparator(withIcon = false)
+                        GlassRow(
+                            v.name,
+                            detail = v.description.ifEmpty { v.category },
+                            onClick = {
+                                chosen = v.id
+                                voicePrefs.edit().putString("elevenlabs_voice_id", v.id).apply()
+                                revision.intValue++
+                            },
+                            trailing = {
+                                v.previewUrl?.let { url ->
+                                    PlayButton { playUrl(url) }
+                                    Spacer(Modifier.width(12.dp))
+                                }
+                                Check(chosen == v.id || (chosen == null && i == 0))
+                            },
+                        )
+                    }
+                }
+                RowSeparator(withIcon = false)
+                GlassRow("Refresh voices", onClick = {
+                    voices = null
+                    reload++
+                })
+            }
+        }
+    }
+
+    // ElevenLabs' own sample clip for a voice: no credits used.
+    private fun playUrl(url: String) {
+        media?.release()
+        media = MediaPlayer().apply {
+            setAudioAttributes(AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_MEDIA).setContentType(AudioAttributes.CONTENT_TYPE_SPEECH).build())
+            setOnPreparedListener { it.start() }
+            setOnErrorListener { _, _, _ -> true }
+            runCatching {
+                setDataSource(url)
+                prepareAsync()
+            }
+        }
+    }
+
     // Plays a sample through our own player (Kokoro isn't a system voice).
     private fun previewKokoro(voiceId: String) {
         previewJob?.cancel()
@@ -652,7 +768,14 @@ class SettingsActivity : ComponentActivity() {
             RowSeparator(withIcon = false)
             GlassRow("Memory", detail = "The conversation stays in memory only and is forgotten after ten quiet minutes.")
             RowSeparator(withIcon = false)
-            GlassRow("Dexter's voice", detail = "Made on this phone.")
+            GlassRow(
+                "Dexter's voice",
+                detail = if (voicePrefs.getString("engine", null) == ElevenLabsEngine.ID) {
+                    "Dexter's replies are sent to ElevenLabs to be spoken."
+                } else {
+                    "Made on this phone."
+                },
+            )
         }
     }
 
@@ -679,6 +802,7 @@ class SettingsActivity : ComponentActivity() {
     private fun voiceLabel(): String = when (voicePrefs.getString("engine", null)) {
         PiperEngine.ID -> "Piper"
         KokoroEngine.ID -> "Kokoro"
+        ElevenLabsEngine.ID -> "ElevenLabs"
         else -> "Phone voice"
     }
 
@@ -703,7 +827,11 @@ class SettingsActivity : ComponentActivity() {
         pendingPreview = null
     }
 
+    private fun elevenModel(): String =
+        voicePrefs.getString("elevenlabs_model", null)?.takeIf { it in ElevenLabsSettings.MODELS } ?: ElevenLabsSettings.DEFAULT_MODEL
+
     override fun onDestroy() {
+        media?.release()
         previewPlayer.stop()
         uiScope.cancel()
         previewTts?.shutdown()
