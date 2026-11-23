@@ -21,4 +21,6 @@ kotlin {
 
 dependencies {
     implementation(project(":face:api"))
+    testImplementation(libs.junit)
+    testImplementation(project(":face:core"))
 }

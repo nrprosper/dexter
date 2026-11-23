@@ -44,7 +44,7 @@ public fun AnimatedFace(
         val ticker = FrameTicker()
         val onFrame: (Long) -> Unit = { nanos ->
             val dt = ticker.tick(nanos)
-            repeat(scale.value) { engine.step(dt) }
+            repeat(scale.value) { engine.step(dt, nanos) }
             if (intro != null && introElapsed[0] >= 0f) {
                 introElapsed[1] += dt
                 if (intro.started || introElapsed[1] > INTRO_FALLBACK) introElapsed[0] += dt

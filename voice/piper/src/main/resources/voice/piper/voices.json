@@ -1,0 +1,48 @@
+{
+  "format": 1,
+  "assets": [
+    {
+      "id": "lexicon-en-us",
+      "file": "lexicon-en-us.txt",
+      "download": {
+        "url": "https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/lexicon-en-us.txt",
+        "sha256": "8b67ae549a465eee78f92ecb74644ad90c3c58ce65f19c68baf85878a10ef73a",
+        "size": 6305773
+      },
+      "license": {
+        "name": "Not stated upstream (built from CMUdict and en_list, likely eSpeak NG output)",
+        "url": "https://github.com/k2-fsa/sherpa-onnx/releases/tag/tts-models",
+        "attribution": "English pronunciation lexicon published by the sherpa-onnx project"
+      }
+    }
+  ],
+  "voices": [
+    {
+      "id": "en_US-ljspeech-medium-int8",
+      "name": "LJ (US English, int8)",
+      "language": "en-US",
+      "sampleRate": 22050,
+      "speakers": 1,
+      "quality": "medium",
+      "default": true,
+      "requires": ["lexicon-en-us"],
+      "license": {
+        "name": "Public domain dataset (LJ Speech); Piper voices MIT",
+        "url": "https://huggingface.co/rhasspy/piper-voices/blob/main/en/en_US/ljspeech/medium/MODEL_CARD",
+        "attribution": "Piper voice trained by Bryce Beattie on the LJ Speech dataset by Keith Ito and Linda Johnson"
+      },
+      "archive": {
+        "download": {
+          "url": "https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/vits-piper-en_US-ljspeech-medium-int8.tar.bz2",
+          "sha256": "24dc3bd77dd48c291e52c297878d3437c9492f245d823d7f6a06c4bbb67f4b6b",
+          "size": 21090429
+        },
+        "files": {
+          "model.onnx": "vits-piper-en_US-ljspeech-medium-int8/en_US-ljspeech-medium.onnx",
+          "tokens.txt": "vits-piper-en_US-ljspeech-medium-int8/tokens.txt",
+          "MODEL_CARD": "vits-piper-en_US-ljspeech-medium-int8/MODEL_CARD"
+        }
+      }
+    }
+  ]
+}

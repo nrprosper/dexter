@@ -15,6 +15,15 @@ android {
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+        // sherpa-onnx ships four ABIs; phones are arm64 and the emulator x86_64.
+        ndk { abiFilters += listOf("arm64-v8a", "x86_64") }
+    }
+
+    packaging {
+        jniLibs {
+            // Only libsherpa-onnx-jni.so and libonnxruntime.so are loaded; the C and C++ API libraries aren't used.
+            excludes += listOf("**/libsherpa-onnx-c-api.so", "**/libsherpa-onnx-cxx-api.so")
+        }
     }
 
     buildTypes {

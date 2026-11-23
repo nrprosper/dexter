@@ -50,6 +50,13 @@ Dexter's face is a small character that feels alive on its own and reacts, playf
 - Natural blinks, glances with purpose, breathing, and small idle moves, all with a limit so it never fidgets.
 - Gets drowsy and falls asleep when left alone; a tap wakes it up.
 
+**A voice, with a mouth that keeps up**
+- Speaks offline with a [Piper](https://github.com/rhasspy/piper) voice running on the phone through [sherpa-onnx](https://github.com/k2-fsa/sherpa-onnx). No account, no cloud. If no voice is downloaded yet, it falls back to the phone's own text-to-speech.
+- The mouth follows the actual sound, not a fake loop: it closes between syllables (no flapping), rounds for "oo" and widens for "ee", and the brows and head punctuate emphasised words.
+- The tone changes the performance. Calm speech is gentle, excited speech bounces, serious speech holds still, and funny speech smirks and ends with a laugh. A happy face keeps smiling while it talks, and a worried face talks with restraint.
+- Interrupt it any time: the sound fades out in a few milliseconds and the mouth springs shut, with no click and no frozen open mouth.
+- Stays in sync on Bluetooth headphones, with a manual offset if your headset needs it.
+
 **Ready to be driven by an assistant**
 - Activities: idle, listening (leans in, nods to your voice), thinking (looks up, then scans, then looks effortful), speaking (mouth follows the voice) and sleeping.
 - A small, thread-safe API (`FaceController`) that any assistant logic can call.
@@ -80,7 +87,8 @@ Everything is playful, and the calmer personality reacts more mildly. No permiss
 
 - **To run:** an Android phone with Android 12 (API 31) or newer. Developed and tested on Android 16.
 - **To build:** JDK 17 or newer, the Android SDK with platform 37, and the included Gradle wrapper.
-- **Permissions:** none to grant. The only declared permission is `DETECT_SCREEN_CAPTURE`, which is granted at install time and only lets the face pose for screenshots.
+- **Permissions:** none to grant. The declared permissions are granted at install time: `DETECT_SCREEN_CAPTURE` (the face poses for screenshots), and `INTERNET` plus `ACCESS_NETWORK_STATE` (downloading a voice, Wi-Fi only by default).
+- **Voice download:** the first time you pick the Piper voice, the app downloads about 27 MB (the voice and an English pronunciation dictionary) from the sherpa-onnx releases on GitHub, checks each file's checksum, and keeps it in app-private storage. Interrupted downloads resume. Nothing model-related is stored in this repository.
 
 ## Getting started
 
@@ -93,7 +101,7 @@ Everything is playful, and the calmer personality reacts more mildly. No permiss
 ./gradlew :face:render-compose:recordPaparazziDebug   # re-record screenshots after a visual change
 ```
 
-A debug install also adds a second app, **Face Playground**, for trying everything by hand: sliders for every part of the face, all expressions, personalities, emotions, reactions, a "noisy AI" simulator, and buttons that fake every phone event.
+A debug install also adds a second app, **Face Playground**, for trying everything by hand: sliders for every part of the face, all expressions, personalities, emotions, reactions, a "noisy AI" simulator, and buttons that fake every phone event. Its **Voice** panel lets you type text, download and pick a voice, set speed, variation and tone, speak and interrupt, play generated test signals, watch the live loudness and mouth graph, and tune the sync offset and mouth settings.
 
 ## Project structure
 
@@ -104,10 +112,14 @@ A debug install also adds a second app, **Face Playground**, for trying everythi
 | `:face:core` | Kotlin/JVM | The simulation: face rig, expressions, springs, life behaviours, director, mood, reactions, senses logic. No Android code |
 | `:face:render-compose` | Android library | Draws the face with Compose Canvas, runs the frame loop, handles touch |
 | `:face:senses-android` | Android library | Listens to battery, charger, volume, sensors, heat and time, and tells the face |
-| `:face:speech-android` | Android library | Placeholder for voice lip-sync |
+| `:face:speech-android` | Android library | The audio player every voice goes through, and the loudness envelope the mouth follows |
 | `:face:playground` | Android library (debug only) | The Face Playground tuning app |
+| `:voice:api` | Kotlin/JVM | The engine-agnostic TTS API: `TtsEngine`, audio chunks with optional timing, the engine router, sentence splitting, number and symbol spelling |
+| `:voice:piper` | Android library | Piper voices on sherpa-onnx, the voice list and the checked, resumable downloader |
+| `:voice:system` | Android library | The fallback to the phone's own text-to-speech |
+| `:voice:speaker` | Android library | `Speaker`: text in, voice and moving mouth out |
 
-Dependencies flow `api ← core ← render-compose ← app`. The face engine is deterministic (seeded randomness, time passed in) and frame-rate independent, so its behaviour is covered by fast JVM tests.
+Dependencies flow `api ← core ← render-compose ← app`; the voice modules only meet the face in `:voice:speaker`. New voices (a higher-quality offline model, a cloud voice) plug in as another `TtsEngine` without touching the face or the player. The face engine is deterministic (seeded randomness, time passed in) and frame-rate independent, so its behaviour is covered by fast JVM tests.
 
 ## Using the face from code
 
@@ -126,11 +138,23 @@ face.setPersonality(PersonalityPresets.load("sage"))
 face.snapshot                                               // StateFlow<FaceSnapshot>
 ```
 
-Expressions and personalities are plain JSON in `face/core/src/main/resources/face/`, so the character can be tuned without touching code. In debug builds, the playground reloads personality edits live.
+Speaking takes one call:
+
+```kotlin
+val voice = VoiceStack(context, face, scope)
+voice.speaker.say("Hi! I'm Dexter.", style = SpeechStyle.Excited)
+voice.speaker.stop()                                        // interrupt
+```
+
+Expressions, personalities and the mouth's speech tuning (`face/speech/mouth.json`) are plain JSON in `face/core/src/main/resources/face/`, so the character can be tuned without touching code. In debug builds, the playground reloads personality edits live.
 
 ## Upcoming
 
-- **Voice:** the mouth lip-synced to the assistant's real voice, with gestures on emphasis.
 - **The assistant itself:** real conversations, with the AI choosing the feeling and tone of each answer and the face choosing the performance.
 - **Power and polish:** battery-friendly modes that pause the animation when nothing moves, a reduced-motion mode, screen burn-in protection, and smoother first seconds after launch.
+- **More voices:** an optional higher-quality offline voice (Kokoro) and, later, a cloud voice.
 - **Later ideas:** precise lip-sync from speech sounds, reacting to claps and music through the microphone (opt-in), looking at you through the front camera (opt-in), and a personality that slowly grows with you.
+
+## Licenses
+
+Third-party libraries and the downloaded voice data are listed with their licenses in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md). The app contains no GPL code.

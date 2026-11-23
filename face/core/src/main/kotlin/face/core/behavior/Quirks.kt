@@ -17,6 +17,9 @@ internal class Quirks(private val ctx: LifeContext, private val blink: BlinkSche
     private var wobbleElapsed = -1f
     private var peekElapsed = -1f
 
+    // Off during serious speech: the playful wobble would undercut the tone.
+    var playfulAllowed = true
+
     fun configure(enabled: Set<Quirk>) {
         unsure = Quirk.DoubleBlinkWhenUnsure in enabled
         wobble = Quirk.HappyWobble in enabled
@@ -29,7 +32,7 @@ internal class Quirks(private val ctx: LifeContext, private val blink: BlinkSche
             unsureElapsed = 0f
             ctx.emit(FaceEvent.Behavior, UNSURE)
         }
-        if (wobble && emotion == Emotion.Happy && strength - previousAmount > WOBBLE_JUMP) {
+        if (wobble && playfulAllowed && emotion == Emotion.Happy && strength - previousAmount > WOBBLE_JUMP) {
             wobbleElapsed = 0f
             ctx.emit(FaceEvent.Behavior, WOBBLE)
         }
