@@ -13,6 +13,30 @@ public class SentenceSplitter(private val maxChars: Int = DEFAULT_MAX_CHARS) {
         require(maxChars >= MIN_MAX_CHARS) { "maxChars must be at least $MIN_MAX_CHARS" }
     }
 
+    // Splits a long sentence once, at its first clause mark (comma, semicolon, dash) within twice maxChars, so slow
+    // engines can start speaking after a short first piece. Never splits mid-phrase. Pieces keep their part and ranges.
+    public fun quickStart(sentence: Sentence, maxChars: Int): List<Sentence> {
+        val t = sentence.text
+        if (maxChars <= 0 || t.length <= maxChars) return listOf(sentence)
+        var cut = -1
+        for (i in QUICK_MIN until minOf(maxChars * 2, t.length - QUICK_MIN)) {
+            if (t[i] in CLAUSE_MARKS && i + 1 < t.length && t[i + 1].isWhitespace()) {
+                cut = i + 1
+                break
+            }
+        }
+        if (cut < 0) return listOf(sentence)
+        val head = t.substring(0, cut).trimEnd()
+        val tail = t.substring(cut).trimStart()
+        if (tail.isEmpty()) return listOf(sentence)
+        val start = sentence.range.first
+        val tailStart = start + t.indexOf(tail, cut)
+        return listOf(
+            Sentence(head, start until start + head.length, sentence.part),
+            Sentence(tail, tailStart until tailStart + tail.length, sentence.part),
+        )
+    }
+
     public fun split(text: String): List<Sentence> {
         val out = ArrayList<Sentence>()
         scan(text, 0, final = true, out)
@@ -119,6 +143,7 @@ public class SentenceSplitter(private val maxChars: Int = DEFAULT_MAX_CHARS) {
         public const val DEFAULT_MAX_CHARS: Int = 220
         private const val MIN_MAX_CHARS = 20
         private const val MIN_PIECE = 8
+        private const val QUICK_MIN = 12
         private const val CLOSERS = "\"'”’)]}»"
         private const val CLAUSE_MARKS = ",;:—–"
         private val ABBREVIATIONS = setOf(
