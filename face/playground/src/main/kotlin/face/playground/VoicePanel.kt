@@ -36,7 +36,6 @@ import face.core.speech.MouthConfig
 import face.speech.PcmBlock
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.launch
-import voice.api.RoutingPolicy
 import voice.api.SynthesisSettings
 import voice.piper.model.InstallState
 import voice.speaker.VoiceStack
@@ -50,7 +49,8 @@ internal fun VoicePanel(voice: VoiceStack, engine: FaceEngine) {
     val speakerState by voice.speaker.state.collectAsState()
     var text by rememberSaveable { mutableStateOf(PRESETS.first().second) }
     var voiceId by remember { mutableStateOf(voice.voiceId ?: voice.store.manifest.defaultVoice?.id) }
-    var useSystem by remember { mutableStateOf(false) }
+    var useSystem by remember { mutableStateOf(voice.engine == "system") }
+    val stats by voice.speaker.stats.collectAsState()
     var speed by remember { mutableFloatStateOf(1f) }
     var variation by remember { mutableFloatStateOf(0.667f) }
     var style by remember { mutableStateOf(STYLES.first()) }
@@ -62,12 +62,17 @@ internal fun VoicePanel(voice: VoiceStack, engine: FaceEngine) {
     var lead by remember { mutableFloatStateOf(voice.leadMillis.toFloat()) }
 
     LaunchedEffect(useSystem) {
-        voice.router.policy = if (useSystem) RoutingPolicy(order = listOf("system", "piper")) else RoutingPolicy()
+        voice.engine = if (useSystem) "system" else "piper"
     }
 
     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
         Text("Voice", style = MaterialTheme.typography.titleSmall)
-        Text("speaker: ${describe(speakerState)}", style = MaterialTheme.typography.bodySmall, fontFamily = FontFamily.Monospace)
+        Text(
+            "speaker: ${describe(speakerState)}\nlast: ${stats.sentences} sentences · worst synth ×%.2f real time · underruns ${stats.underruns}"
+                .format(stats.worstRealTime),
+            style = MaterialTheme.typography.bodySmall,
+            fontFamily = FontFamily.Monospace,
+        )
         OutlinedTextField(text, { text = it }, Modifier.fillMaxWidth(), label = { Text("say") }, minLines = 2, maxLines = 4)
         LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             items(PRESETS) { (name, line) -> FilterChip(text == line, { text = line }, { Text(name) }) }
@@ -79,6 +84,7 @@ internal fun VoicePanel(voice: VoiceStack, engine: FaceEngine) {
                     selected = !useSystem && voiceId == v.id,
                     onClick = {
                         useSystem = false
+                        voice.engine = "piper"
                         voiceId = v.id
                         voice.voiceId = v.id
                         if (!ready && !downloading) {
@@ -104,7 +110,7 @@ internal fun VoicePanel(voice: VoiceStack, engine: FaceEngine) {
                     label = { Text(if (ready) v.name else "${v.name} ↓ ${v.archive.download.size / 1_000_000} MB") },
                 )
             }
-            item { FilterChip(useSystem, { useSystem = true }, { Text("System voice") }) }
+            item { FilterChip(useSystem, { useSystem = true }, { Text("Phone voice (Google)") }) }
         }
         if (download.isNotEmpty()) Text(download, style = MaterialTheme.typography.bodySmall)
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -121,7 +127,7 @@ internal fun VoicePanel(voice: VoiceStack, engine: FaceEngine) {
         }
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             Button({
-                val settings = SynthesisSettings(voiceId = if (useSystem) null else voiceId, speed = speed, variation = variation)
+                val settings = SynthesisSettings(voiceId = voice.voiceId, speed = speed, variation = variation)
                 voice.speaker.say(text, settings, style.second)
             }) { Text("Speak") }
             OutlinedButton({ voice.speaker.stop() }) { Text("Stop") }
