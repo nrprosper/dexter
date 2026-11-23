@@ -1,6 +1,7 @@
 package face.playground
 
 import android.os.Bundle
+import android.util.Log
 import android.view.KeyEvent
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -13,11 +14,19 @@ import androidx.compose.material3.darkColorScheme
 import androidx.compose.ui.Modifier
 import face.core.expression.ExpressionLibrary
 import face.senses.PhoneSenses
+import kotlinx.coroutines.CoroutineExceptionHandler
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
+import voice.speaker.VoiceStack
 
 public class PlaygroundActivity : ComponentActivity() {
     private val store by lazy { PoseStore(this) }
     private val state by lazy { PlaygroundState(ExpressionLibrary.loadBundled(), store.loadAll()) }
     private val senses by lazy { PhoneSenses(this, state.engine) }
+    private val voiceScope = CoroutineScope(SupervisorJob() + Dispatchers.Main + CoroutineExceptionHandler { _, e -> Log.w(TAG, "speech failed", e) })
+    private val voice by lazy { VoiceStack(this, state.engine, voiceScope) }
 
     override fun onStart() {
         super.onStart()
@@ -26,7 +35,13 @@ public class PlaygroundActivity : ComponentActivity() {
 
     override fun onStop() {
         senses.stop()
+        voice.speaker.stop()
         super.onStop()
+    }
+
+    override fun onDestroy() {
+        voiceScope.cancel()
+        super.onDestroy()
     }
 
     override fun onKeyDown(keyCode: Int, event: KeyEvent): Boolean {
@@ -40,7 +55,7 @@ public class PlaygroundActivity : ComponentActivity() {
         setContent {
             MaterialTheme(colorScheme = darkColorScheme()) {
                 Surface(Modifier.fillMaxSize().safeDrawingPadding()) {
-                    PlaygroundScreen(state) { raw ->
+                    PlaygroundScreen(state, voice) { raw ->
                         val expression = state.export(PoseStore.sanitize(raw))
                         val file = store.save(expression)
                         state.remember(expression)
@@ -51,3 +66,5 @@ public class PlaygroundActivity : ComponentActivity() {
         }
     }
 }
+
+private const val TAG = "Playground"
