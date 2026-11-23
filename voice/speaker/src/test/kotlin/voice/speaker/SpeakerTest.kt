@@ -55,6 +55,7 @@ class SpeakerTest {
         override fun setDeviceState(state: DeviceState) = Unit
         override fun showVolume(level: Float) = Unit
         override fun setTilt(x: Float, y: Float) = Unit
+        override fun stage(move: face.api.StageMove) = Unit
         override val snapshot: StateFlow<FaceSnapshot> = MutableStateFlow(FaceSnapshot())
     }
 

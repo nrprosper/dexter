@@ -9,7 +9,8 @@ import kotlin.math.min
 internal class VolumeWatch {
     private var level = 0f
     private var since = Float.MAX_VALUE
-    private var weight = 0f
+    var weight = 0f
+        private set
     private var bounce = -1f
     var portrait = false
 
