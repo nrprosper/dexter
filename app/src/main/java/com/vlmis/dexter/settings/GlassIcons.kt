@@ -13,7 +13,7 @@ import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 
 // Small line icons drawn on a 24-unit grid, so the settings screen needs no icon library.
-internal enum class GlassIcon { Key, Spark, Speaker, Wave, Shield, Download, Chevron, Back, Check, Play, Brain, Face }
+internal enum class GlassIcon { Key, Spark, Speaker, Wave, Shield, Download, Chevron, Back, Check, Play, Brain, Face, Mic }
 
 @Composable
 internal fun GlassIconView(icon: GlassIcon, color: Color, modifier: Modifier = Modifier) {
@@ -62,6 +62,11 @@ internal fun GlassIconView(icon: GlassIcon, color: Color, modifier: Modifier = M
             GlassIcon.Back -> line(15f to 5f, 8f to 12f, 15f to 19f)
             GlassIcon.Check -> line(5f to 12.5f, 10f to 17.5f, 19f to 7f)
             GlassIcon.Play -> filledTriangle(color, u)
+            GlassIcon.Mic -> {
+                drawRoundRect(color, p(9f, 3f), Size(6f * u, 11f * u), androidx.compose.ui.geometry.CornerRadius(3f * u), style = stroke)
+                drawArc(color, 0f, 180f, false, p(5.5f, 7.5f), Size(13f * u, 10f * u), style = stroke)
+                line(12f to 17.5f, 12f to 21f)
+            }
             GlassIcon.Face -> {
                 drawCircle(color, 9f * u, p(12f, 12f), style = stroke)
                 drawCircle(color, 1.5f * u, p(9f, 10f))

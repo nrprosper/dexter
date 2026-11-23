@@ -2,6 +2,10 @@ package assistant.android
 
 import android.content.Context
 import android.os.SystemClock
+import java.time.LocalDateTime
+import java.time.format.DateTimeFormatter
+import java.time.format.TextStyle
+import java.util.Locale
 import assistant.claude.ClaudeBrain
 import assistant.claude.ClaudeSettings
 import assistant.core.Brain
@@ -41,7 +45,22 @@ public class Assistant(context: Context, face: FaceController, scope: CoroutineS
         mouth = SpeakerMouth(voice.speaker) { SynthesisSettings(voiceId = voice.voiceId) },
         scope = scope,
         clock = { SystemClock.elapsedRealtime() },
+        context = ::moment,
     )
+
+    // "Sunday evening, 7:40 pm": lets Dexter say good morning or notice it's late, without reading it out.
+    private fun moment(): String {
+        val now = LocalDateTime.now()
+        val part = when (now.hour) {
+            in 5..11 -> "morning"
+            in 12..16 -> "afternoon"
+            in 17..21 -> "evening"
+            else -> "night"
+        }
+        val day = now.dayOfWeek.getDisplayName(TextStyle.FULL, Locale.getDefault())
+        val time = now.format(DateTimeFormatter.ofPattern("h:mm a", Locale.getDefault())).lowercase(Locale.getDefault())
+        return "$day $part, $time"
+    }
 
     public val provider: BrainProvider get() = BrainProvider.of(prefs.getString(PROVIDER, null))
 

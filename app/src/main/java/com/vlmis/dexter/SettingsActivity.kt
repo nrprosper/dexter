@@ -1,5 +1,6 @@
 package com.vlmis.dexter
 
+import android.content.Intent
 import android.os.Bundle
 import android.speech.tts.TextToSpeech
 import android.view.WindowManager
@@ -154,7 +155,14 @@ class SettingsActivity : ComponentActivity() {
                 FloatingPill(
                     modifier = Modifier.align(Alignment.BottomCenter).fillMaxWidth().navigationBarsPadding()
                         .padding(start = 31.dp, end = 31.dp, bottom = 14.dp),
-                    onClick = { finish() },
+                    onClick = {
+                        startActivity(
+                            Intent(this@SettingsActivity, MainActivity::class.java)
+                                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
+                                .putExtra(MainActivity.EXTRA_LISTEN, true),
+                        )
+                        finish()
+                    },
                 ) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         GlassIconView(GlassIcon.Face, Glass.Text, Modifier.size(22.dp))
