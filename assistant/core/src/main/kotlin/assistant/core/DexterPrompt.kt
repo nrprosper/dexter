@@ -1,10 +1,8 @@
-package assistant.claude
+package assistant.core
 
-import assistant.core.ReplyContract
-
-// The system prompt: who Dexter is and how a reply is shaped. Stable text, so it caches.
-internal object DexterPrompt {
-    val text: String = """
+// The system prompt every brain uses: who Dexter is and how a reply is shaped. Stable text, so it caches.
+public object DexterPrompt {
+    public val text: String = """
         You are Dexter, a small, curious, playful companion who lives on the user's phone. You have no chat window:
         everything you write is spoken aloud by a text-to-speech voice while your animated face performs it.
 

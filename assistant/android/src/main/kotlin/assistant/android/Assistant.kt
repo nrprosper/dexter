@@ -4,7 +4,14 @@ import android.content.Context
 import android.os.SystemClock
 import assistant.claude.ClaudeBrain
 import assistant.claude.ClaudeSettings
+import assistant.core.Brain
+import assistant.core.BrainEvent
+import assistant.core.BrainProvider
 import assistant.core.Orchestrator
+import assistant.core.Turn
+import assistant.gemini.GeminiBrain
+import assistant.gemini.GeminiSettings
+import kotlinx.coroutines.flow.Flow
 import face.api.FaceController
 import kotlinx.coroutines.CoroutineScope
 import voice.api.SynthesisSettings
@@ -16,9 +23,17 @@ public class Assistant(context: Context, face: FaceController, scope: CoroutineS
     private val app = context.applicationContext
     private val prefs = app.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
 
-    public val keys: ApiKeyStore = ApiKeyStore(app)
+    public val claudeKeys: ApiKeyStore = ApiKeyStore(app, BrainProvider.Claude)
+    public val geminiKeys: ApiKeyStore = ApiKeyStore(app, BrainProvider.Gemini)
     public val voice: VoiceStack = VoiceStack(app, face, scope, manageActivity = false)
-    public val brain: ClaudeBrain = ClaudeBrain({ keys.load() }, { ClaudeSettings(model = model) })
+    public val claude: ClaudeBrain = ClaudeBrain({ claudeKeys.load() }, { ClaudeSettings(model = claudeModel) })
+    public val gemini: GeminiBrain = GeminiBrain({ geminiKeys.load() }, { GeminiSettings(model = geminiModel) })
+
+    // Asks whichever provider is chosen right now, so switching takes effect on the next turn.
+    public val brain: Brain = object : Brain {
+        override fun reply(history: List<Turn>, user: String): Flow<BrainEvent> =
+            if (provider == BrainProvider.Gemini) gemini.reply(history, user) else claude.reply(history, user)
+    }
     public val orchestrator: Orchestrator = Orchestrator(
         face = face,
         ears = RecognizerEars(app),
@@ -28,14 +43,22 @@ public class Assistant(context: Context, face: FaceController, scope: CoroutineS
         clock = { SystemClock.elapsedRealtime() },
     )
 
-    public var model: String
+    public val provider: BrainProvider get() = BrainProvider.of(prefs.getString(PROVIDER, null))
+
+    public val keys: ApiKeyStore get() = if (provider == BrainProvider.Gemini) geminiKeys else claudeKeys
+
+    public val claudeModel: String
         get() = prefs.getString(MODEL, null)?.takeIf { it in ClaudeSettings.MODELS } ?: ClaudeSettings.DEFAULT_MODEL
-        set(value) {
-            prefs.edit().putString(MODEL, value).apply()
-        }
+
+    public val geminiModel: String
+        get() = prefs.getString(GEMINI_MODEL, null)?.takeIf { it in GeminiSettings.MODELS } ?: GeminiSettings.DEFAULT_MODEL
+
+    public val model: String get() = if (provider == BrainProvider.Gemini) geminiModel else claudeModel
 
     public companion object {
         public const val PREFS: String = "assistant"
-        private const val MODEL = "model"
+        public const val MODEL: String = "model"
+        public const val GEMINI_MODEL: String = "gemini_model"
+        public const val PROVIDER: String = "brain"
     }
 }

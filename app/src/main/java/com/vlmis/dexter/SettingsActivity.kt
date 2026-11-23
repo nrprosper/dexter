@@ -52,7 +52,10 @@ import assistant.android.ApiKeyStore
 import assistant.android.Assistant
 import assistant.claude.ClaudeBrain
 import assistant.claude.ClaudeSettings
-import assistant.claude.KeyCheck
+import assistant.core.BrainProvider
+import assistant.core.KeyCheck
+import assistant.gemini.GeminiBrain
+import assistant.gemini.GeminiSettings
 import com.vlmis.dexter.settings.ButtonRow
 import com.vlmis.dexter.settings.CardGap
 import com.vlmis.dexter.settings.Dot
@@ -84,12 +87,14 @@ import voice.piper.model.VoiceStore
 import voice.speaker.AndroidConnectivity
 import voice.system.SystemTtsEngine
 
-private enum class Page { Home, Key, Model, Voice, Privacy }
+private enum class Page { Home, Brain, Key, Model, Voice, Privacy }
 
 // Reached from the launcher icon's long-press menu. FLAG_SECURE keeps the API key out of screenshots and the
 // recents thumbnail; the key is never shown, only a masked hint.
 class SettingsActivity : ComponentActivity() {
-    private val keys by lazy { ApiKeyStore(this) }
+    private val claudeKeys by lazy { ApiKeyStore(this, BrainProvider.Claude) }
+    private val geminiKeys by lazy { ApiKeyStore(this, BrainProvider.Gemini) }
+    private val keys: ApiKeyStore get() = if (currentProvider() == BrainProvider.Gemini) geminiKeys else claudeKeys
     private val prefs by lazy { getSharedPreferences(Assistant.PREFS, MODE_PRIVATE) }
     private val voicePrefs by lazy { getSharedPreferences("voice", MODE_PRIVATE) }
     private val store by lazy { VoiceStore(filesDir, VoiceManifest.loadBundled(), AndroidConnectivity(this)) }
@@ -122,6 +127,10 @@ class SettingsActivity : ComponentActivity() {
                     ) {
                         when (p) {
                             Page.Home -> Home { page = it }
+                            Page.Brain -> {
+                                PageHeader("Brain") { page = Page.Home }
+                                BrainPage()
+                            }
                             Page.Key -> {
                                 PageHeader("API key") { page = Page.Home }
                                 KeyPage()
@@ -165,6 +174,8 @@ class SettingsActivity : ComponentActivity() {
         CardGap()
         GlassCard {
             val hint = keys.hint
+            GlassRow("Brain", GlassIcon.Brain, Color(0xFFE5484D), value = currentProvider().label, chevron = true, onClick = { open(Page.Brain) })
+            RowSeparator()
             GlassRow(
                 "API key",
                 GlassIcon.Key,
@@ -206,7 +217,7 @@ class SettingsActivity : ComponentActivity() {
                 Spacer(Modifier.width(17.dp))
                 Column(Modifier.weight(1f)) {
                     Text("Dexter", color = Glass.Text, fontSize = 17.sp, letterSpacing = 0.3.sp)
-                    Text("${modelLabel(currentModel())} · ${voiceLabel()}", color = Glass.Secondary, fontSize = 14.sp, modifier = Modifier.padding(top = 3.dp))
+                    Text("${currentProvider().label} ${modelLabel(currentModel())} · ${voiceLabel()}", color = Glass.Secondary, fontSize = 14.sp, modifier = Modifier.padding(top = 3.dp))
                 }
             }
         }
@@ -223,7 +234,7 @@ class SettingsActivity : ComponentActivity() {
             GlassRow(if (hint != null) "Saved key" else "No key yet", value = hint ?: "Paste one below")
             RowSeparator(withIcon = false)
             Box(Modifier.padding(horizontal = Glass.Margin, vertical = 12.dp)) {
-                GlassSecretField(entry, { entry = it.trim() }, "sk-ant-…")
+                GlassSecretField(entry, { entry = it.trim() }, if (currentProvider() == BrainProvider.Gemini) "Gemini API key" else "sk-ant-…")
             }
             ButtonRow {
                 GlassButton(
@@ -244,7 +255,7 @@ class SettingsActivity : ComponentActivity() {
                     },
                     Modifier.weight(1f),
                     primary = true,
-                    enabled = ApiKeyStore.isPlausible(entry),
+                    enabled = ApiKeyStore.isPlausible(currentProvider(), entry),
                 )
                 GlassButton(
                     "Check",
@@ -256,13 +267,18 @@ class SettingsActivity : ComponentActivity() {
                             status = "Checking…"
                             statusColor = Glass.Secondary
                             scope.launch {
-                                val result = ClaudeBrain({ null }, { ClaudeSettings(model = currentModel()) }).check(key)
+                                val provider = currentProvider()
+                                val result = if (provider == BrainProvider.Gemini) {
+                                    GeminiBrain({ null }, { GeminiSettings(model = currentModel()) }).check(key)
+                                } else {
+                                    ClaudeBrain({ null }, { ClaudeSettings(model = currentModel()) }).check(key)
+                                }
                                 status = when (result) {
                                     KeyCheck.Ok -> "The key works."
-                                    KeyCheck.Rejected -> "Anthropic rejected this key."
+                                    KeyCheck.Rejected -> "${if (provider == BrainProvider.Gemini) "Google" else "Anthropic"} rejected this key."
                                     KeyCheck.ModelUnavailable -> "The key works, but can't use ${modelLabel(currentModel())}."
                                     KeyCheck.Offline -> "No connection; try again online."
-                                    KeyCheck.Error -> "Anthropic returned an error; try again later."
+                                    KeyCheck.Error -> "The service returned an error; try again later."
                                 }
                                 statusColor = if (result == KeyCheck.Ok) Glass.Secondary else Glass.Danger
                             }
@@ -286,18 +302,61 @@ class SettingsActivity : ComponentActivity() {
             }
             if (status.isNotEmpty()) Note(status, statusColor)
         }
+        if (currentProvider() == BrainProvider.Gemini) {
+            Note("Get a free key at aistudio.google.com → Get API key.")
+        }
         Note("Your key is encrypted with a key locked in this phone's secure keystore. It's never backed up and never shown again.")
+    }
+
+    @Composable
+    private fun BrainPage() {
+        var provider by remember { mutableStateOf(currentProvider()) }
+        GlassCard {
+            listOf(
+                Triple(BrainProvider.Claude, "Claude", "Anthropic · needs paid API credits"),
+                Triple(BrainProvider.Gemini, "Gemini", "Google · free tier available"),
+            ).forEachIndexed { i, (p, title, detail) ->
+                if (i > 0) RowSeparator(withIcon = false)
+                GlassRow(
+                    title,
+                    detail = detail,
+                    value = if (keysFor(p).hasKey) "Key saved" else "No key",
+                    onClick = {
+                        provider = p
+                        prefs.edit().putString(Assistant.PROVIDER, p.id).apply()
+                        revision.intValue++
+                    },
+                    trailing = { Check(provider == p) },
+                )
+            }
+        }
+        if (provider == BrainProvider.Gemini) {
+            Note(
+                "On Gemini's free tier, Google may use what you say and Dexter's replies to improve its products, and human " +
+                    "reviewers may read them. Don't tell Dexter anything sensitive or personal while using a free key.",
+                Glass.Danger,
+            )
+        }
     }
 
     @Composable
     private fun ModelPage() {
         var model by remember { mutableStateOf(currentModel()) }
+        val gemini = currentProvider() == BrainProvider.Gemini
         GlassCard {
-            val options = listOf(
-                "claude-opus-5-5" to "Best answers",
-                "claude-sonnet-5-5" to "Fast and smart",
-                "claude-haiku-5-5" to "Fastest, cheapest",
-            )
+            val options = if (gemini) {
+                listOf(
+                    "gemini-4-hydrogen" to "Fast, everyday (free tier)",
+                    "gemini-3.8-flash" to "Smarter Flash (free tier)",
+                    "gemini-3.5-flash-lite" to "Fastest (free tier)",
+                )
+            } else {
+                listOf(
+                    "claude-opus-5-5" to "Best answers",
+                    "claude-sonnet-5-5" to "Fast and smart",
+                    "claude-haiku-5-5" to "Fastest, cheapest",
+                )
+            }
             options.forEachIndexed { i, (id, detail) ->
                 if (i > 0) RowSeparator(withIcon = false)
                 GlassRow(
@@ -305,14 +364,14 @@ class SettingsActivity : ComponentActivity() {
                     detail = detail,
                     onClick = {
                         model = id
-                        prefs.edit().putString("model", id).apply()
+                        prefs.edit().putString(if (gemini) Assistant.GEMINI_MODEL else Assistant.MODEL, id).apply()
                         revision.intValue++
                     },
                     trailing = { Check(model == id) },
                 )
             }
         }
-        Note("Haiku replies quickest, which suits talking; Opus thinks hardest.")
+        Note(if (gemini) "Hydrogen is a good default for talking." else "Haiku replies quickest, which suits talking; Opus thinks hardest.")
     }
 
     @Composable
@@ -457,7 +516,15 @@ class SettingsActivity : ComponentActivity() {
     @Composable
     private fun PrivacyPage() {
         GlassCard {
-            GlassRow("Your words", detail = "When you double-tap and talk, the text of what you said and the recent conversation go to Anthropic to answer.")
+            GlassRow(
+                "Your words",
+                detail = if (currentProvider() == BrainProvider.Gemini) {
+                    "When you talk, the text of what you said and the recent conversation go to Google to answer. On the free tier " +
+                        "Google may use them to improve its products and human reviewers may read them."
+                } else {
+                    "When you double-tap and talk, the text of what you said and the recent conversation go to Anthropic to answer."
+                },
+            )
             RowSeparator(withIcon = false)
             GlassRow("Your voice", detail = "Turned into text by the phone's recognizer, on the phone where available. No recording is kept.")
             RowSeparator(withIcon = false)
@@ -467,13 +534,23 @@ class SettingsActivity : ComponentActivity() {
         }
     }
 
-    private fun currentModel(): String =
-        prefs.getString("model", null)?.takeIf { it in ClaudeSettings.MODELS } ?: ClaudeSettings.DEFAULT_MODEL
+    private fun currentProvider(): BrainProvider = BrainProvider.of(prefs.getString(Assistant.PROVIDER, null))
+
+    private fun keysFor(p: BrainProvider): ApiKeyStore = if (p == BrainProvider.Gemini) geminiKeys else claudeKeys
+
+    private fun currentModel(): String = if (currentProvider() == BrainProvider.Gemini) {
+        prefs.getString(Assistant.GEMINI_MODEL, null)?.takeIf { it in GeminiSettings.MODELS } ?: GeminiSettings.DEFAULT_MODEL
+    } else {
+        prefs.getString(Assistant.MODEL, null)?.takeIf { it in ClaudeSettings.MODELS } ?: ClaudeSettings.DEFAULT_MODEL
+    }
 
     private fun modelLabel(id: String): String = when (id) {
         "claude-opus-5-5" -> "Opus 5.5"
         "claude-sonnet-5-5" -> "Sonnet 5.5"
         "claude-haiku-5-5" -> "Haiku 5.5"
+        "gemini-4-hydrogen" -> "4 Hydrogen"
+        "gemini-3.8-flash" -> "3.8 Flash"
+        "gemini-3.5-flash-lite" -> "3.5 Flash-Lite"
         else -> id
     }
 

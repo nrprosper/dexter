@@ -37,7 +37,8 @@ If a task conflicts with the architecture doc, stop and ask. Don't quietly diver
 | `:voice:system` | Android library | Fallback: Android `TextToSpeech` rendered to WAV, played through our player |
 | `:voice:speaker` | Android library | `Speaker` (router → engine → `PcmPlayer` → face) and `VoiceStack`, the composition root |
 | `:assistant:core` | Pure Kotlin/JVM | `Orchestrator` (listen → think → speak), `Ears`/`Brain`/`Mouth`, the reply contract and streaming `ReplyParser`, `Feeling` → `EmotionSignal`/`SpeechStyle` |
-| `:assistant:claude` | Pure Kotlin/JVM | `ClaudeBrain`: Claude Messages API (Anthropic Java SDK), streaming structured replies, Dexter's system prompt |
+| `:assistant:claude` | Pure Kotlin/JVM | `ClaudeBrain`: Claude Messages API (Anthropic Java SDK), streaming structured replies |
+| `:assistant:gemini` | Pure Kotlin/JVM | `GeminiBrain`: Gemini API `streamGenerateContent` over REST (OkHttp + Jackson, already shipped), same reply contract |
 | `:assistant:android` | Android library | `RecognizerEars` (SpeechRecognizer), `SpeakerMouth`, `ApiKeyStore` (Keystore-encrypted key), `Assistant` wiring |
 
 Dependency direction: `api` ← `core` ← `render-compose` ← `app`. `speech-android` depends only on `face:api`.
@@ -117,4 +118,6 @@ Run `:face:core:test` before saying a task is done.
 - [x] TTS source (Phase 6): **offline first**. Default: Piper voices through sherpa-onnx 2.x (Apache-2.0) with the lexicon text frontend, no eSpeak NG. Fallback: Android `TextToSpeech`, only when no Piper voice is installed. Later: Kokoro-82M via sherpa-onnx (optional, higher quality), then ElevenLabs (cloud). Never the GPL `piper1-gpl` code.
 - [x] Default voice: `en_US-ljspeech-medium` int8 (LJ Speech, public-domain data), downloaded at runtime
 - [x] LLM (Phase 7): **Claude API** through the Anthropic Java SDK, default `claude-opus-5-5` at effort `low` (Sonnet 5.5 / Haiku 5.5 selectable), streaming structured replies `{emotion, intensity, confidence, tone, sentences[{text, emotion?, move?}]}`
+- [x] Brains (Phase 7): Claude or Gemini, chosen in Settings; each key encrypted separately. Gemini default `gemini-4-hydrogen` (free tier: Google may use free-tier data, so the app warns about it)
+- [x] Voice default (Phase 7): the phone's Google TTS (system engine); Piper stays as an offline option
 - [x] Speech input (Phase 7): Android `SpeechRecognizer` (on-device when available); **double-tap** the face to talk (wake word later)

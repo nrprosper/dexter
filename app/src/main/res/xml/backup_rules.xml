@@ -4,4 +4,5 @@
     <include domain="sharedpref" path="." />
     <exclude domain="sharedpref" path="device.xml" />
     <exclude domain="sharedpref" path="assistant_secrets.xml" />
+    <exclude domain="sharedpref" path="assistant_secrets_gemini.xml" />
 </full-backup-content>

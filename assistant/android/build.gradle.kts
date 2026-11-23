@@ -22,6 +22,7 @@ kotlin {
 dependencies {
     api(project(":assistant:core"))
     api(project(":assistant:claude"))
+    api(project(":assistant:gemini"))
     api(project(":voice:speaker"))
     testImplementation(libs.junit)
 }

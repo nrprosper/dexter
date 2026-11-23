@@ -4,6 +4,8 @@ import assistant.core.Brain
 import assistant.core.BrainEvent
 import assistant.core.BrainException
 import assistant.core.BrainFailure
+import assistant.core.DexterPrompt
+import assistant.core.KeyCheck
 import assistant.core.ReplyContract
 import assistant.core.ReplyParser
 import assistant.core.Turn
@@ -156,5 +158,3 @@ public class ClaudeBrain(
         val SCHEMA: Any = ObjectMapper().readValue(ReplyContract.schema, Map::class.java)
     }
 }
-
-public enum class KeyCheck { Ok, Rejected, ModelUnavailable, Offline, Error }

@@ -5,34 +5,36 @@ import android.security.keystore.KeyGenParameterSpec
 import android.security.keystore.KeyProperties
 import android.security.keystore.StrongBoxUnavailableException
 import android.util.Base64
+import assistant.core.BrainProvider
 import java.security.KeyStore
 import javax.crypto.Cipher
 import javax.crypto.KeyGenerator
 import javax.crypto.SecretKey
 import javax.crypto.spec.GCMParameterSpec
 
-// The Claude API key, encrypted at rest with AES-256-GCM under a key that lives in the Android Keystore
+// An API key (one store per provider), encrypted at rest with AES-256-GCM under a key that lives in the Android Keystore
 // (StrongBox where the phone has it) and can never be exported. Only the IV and ciphertext are stored, in an
 // app-private preferences file that is excluded from backups and device transfer (a restored copy couldn't be
 // decrypted anyway: Keystore keys don't leave the device). The key is never logged or shown in full.
-public class ApiKeyStore(context: Context) {
-    private val prefs = context.applicationContext.getSharedPreferences(FILE, Context.MODE_PRIVATE)
+public class ApiKeyStore(context: Context, public val provider: BrainProvider = BrainProvider.Claude) {
+    private val prefs = context.applicationContext.getSharedPreferences(file(provider), Context.MODE_PRIVATE)
+    private val alias = ALIAS_PREFIX + provider.id + ALIAS_SUFFIX
 
     public val hasKey: Boolean get() = prefs.contains(CIPHERTEXT)
 
-    // A masked hint for the UI, e.g. "sk-ant-…x7Qa".
+    // A masked hint for the UI, e.g. "sk-ant-…x7Qa" or "…x7Qa".
     public val hint: String? get() = prefs.getString(HINT, null)
 
     public fun save(raw: String) {
         val key = raw.trim()
-        require(isPlausible(key)) { "That doesn't look like an Anthropic API key." }
+        require(isPlausible(provider, key)) { "That doesn't look like a ${provider.label} API key." }
         val cipher = Cipher.getInstance(TRANSFORMATION)
         cipher.init(Cipher.ENCRYPT_MODE, secret())
         val sealed = cipher.doFinal(key.toByteArray(Charsets.UTF_8))
         prefs.edit()
             .putString(IV, Base64.encodeToString(cipher.iv, Base64.NO_WRAP))
             .putString(CIPHERTEXT, Base64.encodeToString(sealed, Base64.NO_WRAP))
-            .putString(HINT, PREFIX + "…" + key.takeLast(HINT_CHARS))
+            .putString(HINT, (if (provider == BrainProvider.Claude) PREFIX else "") + "…" + key.takeLast(HINT_CHARS))
             .apply()
     }
 
@@ -56,7 +58,7 @@ public class ApiKeyStore(context: Context) {
 
     private fun secret(): SecretKey {
         val store = KeyStore.getInstance(KEYSTORE).apply { load(null) }
-        (store.getEntry(ALIAS, null) as? KeyStore.SecretKeyEntry)?.let { return it.secretKey }
+        (store.getEntry(alias, null) as? KeyStore.SecretKeyEntry)?.let { return it.secretKey }
         return try {
             generate(strongBox = true)
         } catch (e: StrongBoxUnavailableException) {
@@ -65,7 +67,7 @@ public class ApiKeyStore(context: Context) {
     }
 
     private fun generate(strongBox: Boolean): SecretKey {
-        val spec = KeyGenParameterSpec.Builder(ALIAS, KeyProperties.PURPOSE_ENCRYPT or KeyProperties.PURPOSE_DECRYPT)
+        val spec = KeyGenParameterSpec.Builder(alias, KeyProperties.PURPOSE_ENCRYPT or KeyProperties.PURPOSE_DECRYPT)
             .setBlockModes(KeyProperties.BLOCK_MODE_GCM)
             .setEncryptionPaddings(KeyProperties.ENCRYPTION_PADDING_NONE)
             .setKeySize(KEY_BITS)
@@ -80,7 +82,8 @@ public class ApiKeyStore(context: Context) {
     public companion object {
         private const val FILE = "assistant_secrets"
         private const val KEYSTORE = "AndroidKeyStore"
-        private const val ALIAS = "dexter.claude.api-key"
+        private const val ALIAS_PREFIX = "dexter."
+        private const val ALIAS_SUFFIX = ".api-key"
         private const val TRANSFORMATION = "AES/GCM/NoPadding"
         private const val KEY_BITS = 256
         private const val TAG_BITS = 128
@@ -89,8 +92,15 @@ public class ApiKeyStore(context: Context) {
         private const val HINT = "hint"
         private const val PREFIX = "sk-ant-"
         private const val HINT_CHARS = 4
-        private val SHAPE = Regex("^sk-ant-[A-Za-z0-9_-]{20,}$")
+        private val ANTHROPIC = Regex("^sk-ant-[A-Za-z0-9_-]{20,}$")
+        private val GOOGLE = Regex("^[A-Za-z0-9_-]{30,}$")
 
-        public fun isPlausible(key: String): Boolean = SHAPE.matches(key.trim())
+        // Claude keeps the original file name, so keys saved before Gemini existed still load.
+        private fun file(provider: BrainProvider): String = if (provider == BrainProvider.Claude) FILE else FILE + "_" + provider.id
+
+        public fun isPlausible(provider: BrainProvider, key: String): Boolean = when (provider) {
+            BrainProvider.Claude -> ANTHROPIC.matches(key.trim())
+            BrainProvider.Gemini -> GOOGLE.matches(key.trim())
+        }
     }
 }
